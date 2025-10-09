@@ -1,6 +1,6 @@
 function Header() {
   return (
-    <header className="h-16 text-black font-medium grid grid-cols-3 items-center bg-gray-100 px-60">
+    <header className="h-16 text-black font-medium grid grid-cols-3 items-center bg-white px-60 shadow-md">
       <h1 className="justify-self-start">NGO Cursos</h1>
 
       <nav className="justify-self-center">
