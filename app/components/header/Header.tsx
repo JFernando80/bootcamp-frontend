@@ -12,7 +12,7 @@ function Header() {
             <a href="/about">Sobre</a>
           </li>
           <li>
-            <a href="/">Minha Área</a>
+            <a href="/myArea">Minha Área</a>
           </li>
         </ul>
       </nav>
