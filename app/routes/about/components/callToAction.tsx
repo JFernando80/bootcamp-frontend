@@ -9,13 +9,19 @@ export function CallToAction() {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-all shadow-xs h-10 rounded-md px-6 bg-white text-green-600 hover:bg-gray-100">
+          <a
+            href="/register"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-all shadow-xs h-10 rounded-md px-6 bg-white text-green-600 hover:bg-gray-100"
+          >
             Cadastre-se Gratuitamente
-          </button>
+          </a>
 
-          <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-all shadow-xs h-10 rounded-md px-6 border border-white text-white hover:bg-white hover:text-green-600">
+          <a
+            href="/"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-all shadow-xs h-10 rounded-md px-6 border border-white text-white hover:bg-white hover:text-green-600"
+          >
             Explorar Cursos
-          </button>
+          </a>
         </div>
       </div>
     </section>

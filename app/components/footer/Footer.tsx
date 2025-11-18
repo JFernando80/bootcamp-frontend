@@ -20,7 +20,7 @@ export function Footer() {
             <h3 className="text-lg font-semibold mb-4">Links Úteis</h3>
             <ul className="space-y-2 text-gray-300">
               <li>
-                <a href="#" className="hover:text-white">
+                <a href="/about" className="hover:text-white">
                   Sobre
                 </a>
               </li>

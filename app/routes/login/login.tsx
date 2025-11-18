@@ -1,6 +1,45 @@
-import React from "react";
+import React, { useState } from "react";
+import { useAuthStore } from "~/stores/authStore";
+import { useNavigate } from "react-router";
 
 export default function LoginCard() {
+  const login = useAuthStore((s) => s.login);
+  const navigate = useNavigate();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const simulateLoginRequest = async (credentials: {
+    email: string;
+    password: string;
+  }) => {
+    await new Promise((r) => setTimeout(r, 800));
+
+    if (!credentials.email || !credentials.password) {
+      throw new Error("Preencha email e senha");
+    }
+
+    return { token: btoa(credentials.email + ":" + Date.now()) };
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      const { token } = await simulateLoginRequest({ email, password });
+      login(token);
+      navigate("/myArea");
+    } catch (err: any) {
+      setError(err.message || "Erro ao fazer login");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div
       style={{ minHeight: "calc(100vh - 64px)" }}
@@ -36,7 +75,7 @@ export default function LoginCard() {
 
         <div className="bg-white text-card-foreground flex flex-col gap-6 rounded-2xl py-6 shadow-md border border-gray-200">
           <div className="p-6">
-            <form className="space-y-6">
+            <form className="space-y-6" onSubmit={handleSubmit}>
               <div>
                 <label
                   className="block text-sm font-medium text-gray-700 mb-2"
@@ -48,7 +87,10 @@ export default function LoginCard() {
                   id="email"
                   type="email"
                   placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="flex h-10 w-full rounded-lg border border-gray-200 bg-transparent px-3 text-base text-gray-800 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-green-200 placeholder:text-gray-400"
+                  disabled={loading}
                 />
               </div>
 
@@ -63,7 +105,10 @@ export default function LoginCard() {
                   id="password"
                   type="password"
                   placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="flex h-10 w-full rounded-lg border border-gray-200 bg-transparent px-3 text-base text-gray-800 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-green-200 placeholder:text-gray-400"
+                  disabled={loading}
                 />
               </div>
 
@@ -82,20 +127,29 @@ export default function LoginCard() {
                 </a>
               </div>
 
+              {error && (
+                <p className="text-sm text-red-600" role="alert">
+                  {error}
+                </p>
+              )}
               <button
                 type="submit"
-                className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-all h-10 w-full bg-green-600 hover:bg-green-700 text-white"
+                disabled={loading}
+                className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-all h-10 w-full bg-green-600 hover:bg-green-700 text-white disabled:opacity-60"
               >
-                Entrar
+                {loading ? "Entrando..." : "Entrar"}
               </button>
             </form>
 
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 Não tem uma conta?{" "}
-                <button className="text-green-600 hover:text-green-500 font-medium">
+                <a
+                  href="/register"
+                  className="text-green-600 hover:text-green-500 font-medium"
+                >
                   Cadastre-se gratuitamente
-                </button>
+                </a>
               </p>
             </div>
           </div>

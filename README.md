@@ -85,3 +85,51 @@ This template comes with [Tailwind CSS](https://tailwindcss.com/) already config
 ---
 
 Built with ❤️ using React Router.
+
+## API Client (Axios)
+
+Este projeto inclui um cliente Axios configurado em `app/api/httpClient.ts` com dois interceptors:
+
+- Request: adiciona o header `Authorization: Bearer <token>` automaticamente usando o `token` do `useAuthStore` (Zustand persistido).
+- Response: se a API retornar **401 Unauthorized**, o usuário é deslogado (`logout()`) e redirecionado para `/login`.
+
+### Base URL
+
+Defina a variável de ambiente opcional `VITE_API_BASE_URL` para apontar para sua API. Exemplo em `.env`:
+
+```bash
+VITE_API_BASE_URL=https://api.seuservico.com
+```
+
+### Uso rápido
+
+```ts
+// Importar instância ou helpers
+import httpClient, { apiGet, apiPost } from "./app/api/httpClient";
+import { useAuthStore } from "./app/stores/authStore";
+
+// GET tipado
+type Course = { id: string; title: string };
+const courses = await apiGet<Course[]>("/courses");
+
+// Login e armazenar token
+type LoginResponse = { token: string };
+const data = await apiPost<LoginResponse, { email: string; password: string }>(
+  "/auth/login",
+  { email: "user@example.com", password: "secret" }
+);
+useAuthStore.getState().login(data.token);
+
+// Chamada usando a instância direta
+const resp = await httpClient.get("/profile");
+console.log(resp.data);
+```
+
+### Tratamento de 401
+
+Não é necessário tratar manualmente o 401 em cada chamada. Ao receber 401 o cliente:
+
+1. Executa `logout()`.
+2. Redireciona para `/login` (somente no browser).
+
+Se quiser comportamento diferente (ex: refresh token) ajuste no interceptor em `httpClient.ts`.

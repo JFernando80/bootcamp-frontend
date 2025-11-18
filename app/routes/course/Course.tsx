@@ -29,7 +29,7 @@ const Course = () => {
         Voltar para Meus Cursos
       </a>
 
-      <h1 className="text-3xl font-bold text-gray-900 mt-4 mb-6">
+      <h1 className="text-3xl font-bold text-gray-900 mt-6 mb-6">
         Gestão de ONGs
       </h1>
 

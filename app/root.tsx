@@ -10,6 +10,7 @@ import {
 import type { Route } from "./+types/root";
 
 import { Header } from "./components/header/Header";
+import { AuthProvider } from "~/context/AuthProvider";
 
 import "./app.css";
 
@@ -36,8 +37,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body className="bg-gray-50">
-        <Header />
-        {children}
+        <AuthProvider>
+          <Header />
+          {children}
+        </AuthProvider>
         <ScrollRestoration />
         <Scripts />
       </body>
