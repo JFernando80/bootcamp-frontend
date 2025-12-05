@@ -1,9 +1,8 @@
 import React, { useState } from "react";
-import { useAuthStore } from "~/stores/authStore";
+import { loginUser } from "~/api/authService";
 import { useNavigate } from "react-router";
 
 export default function LoginCard() {
-  const login = useAuthStore((s) => s.login);
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
@@ -11,27 +10,13 @@ export default function LoginCard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const simulateLoginRequest = async (credentials: {
-    email: string;
-    password: string;
-  }) => {
-    await new Promise((r) => setTimeout(r, 800));
-
-    if (!credentials.email || !credentials.password) {
-      throw new Error("Preencha email e senha");
-    }
-
-    return { token: btoa(credentials.email + ":" + Date.now()) };
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
     try {
-      const { token } = await simulateLoginRequest({ email, password });
-      login(token);
+      await loginUser({ email, password });
       navigate("/myArea");
     } catch (err: any) {
       setError(err.message || "Erro ao fazer login");

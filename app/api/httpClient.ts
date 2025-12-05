@@ -8,8 +8,7 @@ import type {
 } from "axios";
 import { useAuthStore } from "../stores/authStore";
 
-const BASE_URL =
-  import.meta?.env?.VITE_API_BASE_URL || "https://api.example.com";
+const BASE_URL = "http://localhost:8081";
 
 const httpClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
@@ -18,14 +17,15 @@ const httpClient: AxiosInstance = axios.create({
 
 httpClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = useAuthStore.getState().token;
-    if (token) {
-      const headers: any = config.headers || {};
-      if (!headers["Authorization"]) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-      config.headers = headers;
+    const { token, sessionId } = useAuthStore.getState();
+    const headers: any = config.headers || {};
+    if (sessionId && !headers["token"]) {
+      headers["token"] = sessionId;
     }
+    if (token && !headers["Authorization"]) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    config.headers = headers;
     return config;
   },
   (error) => Promise.reject(error as AxiosError)

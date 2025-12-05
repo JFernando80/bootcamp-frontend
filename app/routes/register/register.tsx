@@ -1,9 +1,8 @@
 import React, { useState } from "react";
-import { useAuthStore } from "~/stores/authStore";
+import { registerUser } from "~/api/authService";
 import { useNavigate } from "react-router";
 
 export default function RegisterCard() {
-  const login = useAuthStore((s) => s.login);
   const navigate = useNavigate();
 
   const [fullName, setFullName] = useState("");
@@ -15,45 +14,26 @@ export default function RegisterCard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const simulateRegisterRequest = async (body: {
-    fullName: string;
-    email: string;
-    password: string;
-    confirmPassword: string;
-    userType: string;
-    acceptTerms: boolean;
-  }) => {
-    await new Promise((r) => setTimeout(r, 900));
-
-    if (!body.fullName || !body.email || !body.password) {
-      throw new Error("Preencha todos os campos obrigatórios");
-    }
-
-    if (body.password !== body.confirmPassword) {
-      throw new Error("As senhas não coincidem");
-    }
-
-    if (!body.acceptTerms) {
-      throw new Error("É necessário aceitar os termos");
-    }
-
-    return { token: btoa(body.email + ":" + Date.now()) };
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      const { token } = await simulateRegisterRequest({
-        fullName,
+      if (!fullName || !email || !password) {
+        throw new Error("Preencha todos os campos obrigatórios");
+      }
+      if (password !== confirmPassword) {
+        throw new Error("As senhas não coincidem");
+      }
+      if (!acceptTerms) {
+        throw new Error("É necessário aceitar os termos");
+      }
+      await registerUser({
+        name: fullName,
         email,
+        sobrenome: "Teste",
         password,
-        confirmPassword,
-        userType,
-        acceptTerms,
       });
-      login(token);
       navigate("/myArea");
     } catch (err: any) {
       setError(err.message || "Erro ao registrar");
