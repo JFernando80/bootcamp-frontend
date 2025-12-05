@@ -2,10 +2,14 @@
 import React from "react";
 import { useAuth } from "~/context/AuthProvider";
 import { useNavigate } from "react-router";
+import { MobileToggle } from "./MobileToggle";
+import { NavLinks } from "./NavLinks";
+import { AuthActions } from "./AuthActions";
 
 function HeaderInner() {
   const { isAuthenticated, logout, ready } = useAuth();
   const navigate = useNavigate();
+  const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const handleLogout = () => {
     logout();
@@ -13,71 +17,61 @@ function HeaderInner() {
     navigate("/");
   };
 
+  const toggleMobile = () => setMobileOpen((v) => !v);
+  const closeMobile = () => setMobileOpen(false);
+
   return (
-    <header className="h-16 text-black font-medium grid grid-cols-3 items-center bg-white px-60 shadow-md">
-      <h1 className="justify-self-start">NGO Cursos</h1>
+    <header className="text-black font-medium bg-white shadow-md">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <MobileToggle open={mobileOpen} onToggle={toggleMobile} />
+            <h1 className="text-base sm:text-lg md:text-xl">NGO Cursos</h1>
+          </div>
 
-      <nav className="justify-self-center">
-        <ul className="flex gap-14 text-sm">
-          <li>
-            <a href="/">Cursos</a>
-          </li>
-          <li>
-            <a href="/about">Sobre</a>
-          </li>
-          {!ready ? null : isAuthenticated ? (
-            <li>
-              <a href="/myArea">Minha Área</a>
-            </li>
-          ) : (
-            <li className="relative group">
-              <span
-                role="link"
-                aria-disabled="true"
-                tabIndex={0}
-                className="text-gray-400 cursor-not-allowed select-none"
-                onClick={(e) => e.preventDefault()}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                  }
-                }}
-              >
-                Minha Área
-              </span>
-              <div className="absolute left-1/2 -translate-x-1/2 mt-2 hidden group-hover:block group-focus-within:block bg-black text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
-                Faça login para acessar
-              </div>
-            </li>
-          )}
-        </ul>
-      </nav>
+          <nav id="primary-navigation" className="hidden md:block">
+            <NavLinks
+              ready={ready}
+              isAuthenticated={isAuthenticated}
+              onNavigate={closeMobile}
+              layout="desktop"
+            />
+          </nav>
 
-      <nav className="flex gap-4 text-sm justify-self-end">
-        {!ready ? null : !isAuthenticated ? (
-          <>
-            <a
-              href="/login"
-              className="border border-gray-300 px-4 py-[6px] rounded-md hover:bg-gray-200 transition"
-            >
-              Login
-            </a>
-            <a
-              href="/register"
-              className="bg-green-600 text-white px-4 py-[6px] rounded-md hover:bg-green-700 transition"
-            >
-              Cadastro
-            </a>
-          </>
-        ) : (
-          <button
-            onClick={handleLogout}
-            className="border border-gray-300 px-4 py-[6px] rounded-md hover:bg-gray-200 transition"
-          >
-            Sair
-          </button>
-        )}
-      </nav>
+          <div className="hidden md:block">
+            <AuthActions
+              ready={ready}
+              isAuthenticated={isAuthenticated}
+              onLogout={handleLogout}
+              layout="desktop"
+              onNavigate={closeMobile}
+            />
+          </div>
+        </div>
+
+        <div
+          className={`${mobileOpen ? "block" : "hidden"} md:hidden border-t border-gray-200 pb-4`}
+        >
+          <nav className="pt-3">
+            <NavLinks
+              ready={ready}
+              isAuthenticated={isAuthenticated}
+              onNavigate={closeMobile}
+              layout="mobile"
+            />
+          </nav>
+          <AuthActions
+            ready={ready}
+            isAuthenticated={isAuthenticated}
+            onLogout={() => {
+              handleLogout();
+              closeMobile();
+            }}
+            layout="mobile"
+            onNavigate={closeMobile}
+          />
+        </div>
+      </div>
     </header>
   );
 }
