@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router";
 
 type Props = {
   ready: boolean;
@@ -23,20 +24,20 @@ export function NavLinks({
   return (
     <ul className={listClass}>
       <li>
-        <a href="/" className={itemClass} onClick={onNavigate}>
+        <Link to="/" className={itemClass} onClick={onNavigate}>
           Cursos
-        </a>
+        </Link>
       </li>
       <li>
-        <a href="/about" className={itemClass} onClick={onNavigate}>
+        <Link to="/about" className={itemClass} onClick={onNavigate}>
           Sobre
-        </a>
+        </Link>
       </li>
       {isAuthenticated ? (
         <li>
-          <a href="/myArea" className={itemClass} onClick={onNavigate}>
+          <Link to="/myArea" className={itemClass} onClick={onNavigate}>
             Minha Área
-          </a>
+          </Link>
         </li>
       ) : (
         <li className={layout === "desktop" ? "relative group" : "relative"}>

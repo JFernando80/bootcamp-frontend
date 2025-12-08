@@ -11,14 +11,13 @@ function HeaderInner() {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
-  const handleLogout = () => {
+  const handleLogout = React.useCallback(() => {
     logout();
-    // Redireciona para home
     navigate("/");
-  };
+  }, [logout, navigate]);
 
-  const toggleMobile = () => setMobileOpen((v) => !v);
-  const closeMobile = () => setMobileOpen(false);
+  const toggleMobile = React.useCallback(() => setMobileOpen((v) => !v), []);
+  const closeMobile = React.useCallback(() => setMobileOpen(false), []);
 
   return (
     <header className="text-black font-medium bg-white shadow-md">
@@ -76,5 +75,4 @@ function HeaderInner() {
   );
 }
 
-// Memo evita re-render em trocas de rota quando contexto não muda
 export const Header = React.memo(HeaderInner);

@@ -5,12 +5,6 @@ import { useNavigate } from "react-router";
 export default function RegisterCard() {
   const navigate = useNavigate();
 
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [userType, setUserType] = useState("student");
-  const [acceptTerms, setAcceptTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,7 +13,17 @@ export default function RegisterCard() {
     setError(null);
     setLoading(true);
     try {
-      if (!fullName || !email || !password) {
+      const form = e.target as HTMLFormElement;
+      const data = new FormData(form);
+      const fullName = String(data.get("fullName") || "").trim();
+      const sobrenome = String(data.get("sobrenome") || "").trim();
+      const email = String(data.get("email") || "").trim();
+      const password = String(data.get("password") || "");
+      const confirmPassword = String(data.get("confirmPassword") || "");
+      const userType = String(data.get("userType") || "student");
+      const acceptTerms = Boolean(data.get("terms"));
+
+      if (!fullName || !sobrenome || !email || !password) {
         throw new Error("Preencha todos os campos obrigatórios");
       }
       if (password !== confirmPassword) {
@@ -31,7 +35,7 @@ export default function RegisterCard() {
       await registerUser({
         name: fullName,
         email,
-        sobrenome: "Teste",
+        sobrenome,
         password,
       });
       navigate("/myArea");
@@ -82,10 +86,26 @@ export default function RegisterCard() {
                 </label>
                 <input
                   id="fullName"
+                  name="fullName"
                   type="text"
-                  placeholder="Seu nome completo"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Seu nome"
+                  className="flex h-10 w-full rounded-lg border border-gray-200 bg-transparent px-3 text-base text-gray-800 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-green-200 placeholder:text-gray-400"
+                  disabled={loading}
+                />
+              </div>
+
+              <div>
+                <label
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                  htmlFor="sobrenome"
+                >
+                  Sobrenome
+                </label>
+                <input
+                  id="sobrenome"
+                  name="sobrenome"
+                  type="text"
+                  placeholder="Seu sobrenome"
                   className="flex h-10 w-full rounded-lg border border-gray-200 bg-transparent px-3 text-base text-gray-800 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-green-200 placeholder:text-gray-400"
                   disabled={loading}
                 />
@@ -100,10 +120,9 @@ export default function RegisterCard() {
                 </label>
                 <input
                   id="email"
+                  name="email"
                   type="email"
                   placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
                   className="flex h-10 w-full rounded-lg border border-gray-200 bg-transparent px-3 text-base text-gray-800 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-green-200 placeholder:text-gray-400"
                   disabled={loading}
                 />
@@ -118,10 +137,9 @@ export default function RegisterCard() {
                 </label>
                 <input
                   id="password"
+                  name="password"
                   type="password"
                   placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
                   className="flex h-10 w-full rounded-lg border border-gray-200 bg-transparent px-3 text-base text-gray-800 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-green-200 placeholder:text-gray-400"
                   disabled={loading}
                 />
@@ -136,10 +154,9 @@ export default function RegisterCard() {
                 </label>
                 <input
                   id="confirmPassword"
+                  name="confirmPassword"
                   type="password"
                   placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
                   className="flex h-10 w-full rounded-lg border border-gray-200 bg-transparent px-3 text-base text-gray-800 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-green-200 placeholder:text-gray-400"
                   disabled={loading}
                 />
@@ -154,8 +171,8 @@ export default function RegisterCard() {
                 </label>
                 <select
                   id="userType"
-                  value={userType}
-                  onChange={(e) => setUserType(e.target.value)}
+                  name="userType"
+                  defaultValue="student"
                   className="w-full h-10 rounded-lg border border-gray-200 px-3 text-base text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-green-200"
                   disabled={loading}
                 >
@@ -170,8 +187,7 @@ export default function RegisterCard() {
                   type="checkbox"
                   className="rounded border-gray-300"
                   id="terms"
-                  checked={acceptTerms}
-                  onChange={(e) => setAcceptTerms(e.target.checked)}
+                  name="terms"
                   disabled={loading}
                 />
                 <label htmlFor="terms" className="ml-2 text-sm text-gray-600">

@@ -14,7 +14,6 @@ interface AuthState {
     ttlMinutes?: number
   ) => void;
   logout: () => void;
-  hasHydrated: boolean;
 }
 
 export const useAuthStore = create(
@@ -25,6 +24,7 @@ export const useAuthStore = create(
       sessionId: null,
       publicKey: null,
       sessionExpiry: null,
+
       login: (token, sessionId, publicKey, ttlMinutes = 30) =>
         set({
           isAuthenticated: true,
@@ -33,6 +33,7 @@ export const useAuthStore = create(
           publicKey,
           sessionExpiry: Date.now() + ttlMinutes * 60_000,
         }),
+
       logout: () =>
         set({
           isAuthenticated: false,
@@ -41,15 +42,19 @@ export const useAuthStore = create(
           publicKey: null,
           sessionExpiry: null,
         }),
-      hasHydrated: false,
     }),
+
     {
       name: "auth",
-      onRehydrateStorage: () => (state, error) => {
-        if (!error) {
-          useAuthStore.setState({ hasHydrated: true });
-        }
-      },
+      // Persist only the fields required across sessions
+      partialize: (state) =>
+        ({
+          isAuthenticated: state.isAuthenticated,
+          token: state.token,
+          sessionId: state.sessionId,
+          publicKey: state.publicKey,
+          sessionExpiry: state.sessionExpiry,
+        }) as any,
     }
   )
 );
