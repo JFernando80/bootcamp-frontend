@@ -20,7 +20,7 @@ function HeaderInner() {
   const closeMobile = React.useCallback(() => setMobileOpen(false), []);
 
   return (
-    <header className="text-black font-medium bg-white shadow-md">
+    <header className="text-black font-medium bg-white shadow-md sticky top-0 z-1">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">

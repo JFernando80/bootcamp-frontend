@@ -4,6 +4,7 @@ import CoursesIcon from "./icons/CoursesIcon";
 import CertificatesIcon from "./icons/CertificatesIcon";
 import ActivitiesIcon from "./icons/ActivitiesIcon";
 import UserAvatar from "./icons/UserAvatar";
+import { Plus } from "lucide-react";
 
 type SidebarItem = {
   label: string;
@@ -26,6 +27,11 @@ const items: SidebarItem[] = [
     label: "Atividade",
     href: "/myArea/activities",
     icon: () => <ActivitiesIcon />,
+  },
+  {
+    label: "Criar Curso",
+    href: "/createCourse",
+    icon: () => <Plus className="w-5 h-5" />,
   },
 ];
 
