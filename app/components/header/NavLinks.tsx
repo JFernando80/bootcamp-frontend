@@ -4,6 +4,7 @@ import { Link } from "react-router";
 type Props = {
   ready: boolean;
   isAuthenticated: boolean;
+  isAdmin?: boolean;
   onNavigate?: () => void;
   layout?: "desktop" | "mobile";
 };
@@ -11,6 +12,7 @@ type Props = {
 export function NavLinks({
   ready,
   isAuthenticated,
+  isAdmin = false,
   onNavigate,
   layout = "desktop",
 }: Props) {
@@ -33,6 +35,13 @@ export function NavLinks({
           Sobre
         </Link>
       </li>
+      {isAuthenticated && isAdmin && (
+        <li>
+          <Link to="/manageCourses" className={itemClass} onClick={onNavigate}>
+            Gerenciar Cursos
+          </Link>
+        </li>
+      )}
       {isAuthenticated ? (
         <li>
           <Link to="/myArea" className={itemClass} onClick={onNavigate}>

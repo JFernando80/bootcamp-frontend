@@ -5,6 +5,7 @@ import CertificatesIcon from "./icons/CertificatesIcon";
 import ActivitiesIcon from "./icons/ActivitiesIcon";
 import UserAvatar from "./icons/UserAvatar";
 import { Plus } from "lucide-react";
+import { useAuthStore } from "~/stores/authStore";
 
 type SidebarItem = {
   label: string;
@@ -36,6 +37,8 @@ const items: SidebarItem[] = [
 ];
 
 const Sidebar = () => {
+  const { userName, userEmail } = useAuthStore();
+
   return (
     <div className="w-64 bg-blue-600 text-white min-h-screen flex flex-col">
       <div className="p-6">
@@ -44,8 +47,10 @@ const Sidebar = () => {
             <UserAvatar />
           </div>
           <div>
-            <h3 className="font-semibold">Seu Nome</h3>
-            <p className="text-blue-200 text-sm">Cargo / Função</p>
+            <h3 className="font-semibold">
+              {userName || userEmail || "Usuário"}
+            </h3>
+            <p className="text-blue-200 text-sm">{userEmail || "Sem email"}</p>
           </div>
         </div>
 

@@ -1,3 +1,10 @@
+/**
+ * @deprecated Este arquivo contém dados mockados e não deve mais ser usado.
+ * Use os serviços da API em `~/api/services` para buscar dados reais.
+ *
+ * Este arquivo é mantido apenas como referência da estrutura de dados anterior.
+ */
+
 import {
   BookOpen,
   Leaf,

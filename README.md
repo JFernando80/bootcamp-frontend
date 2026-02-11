@@ -16,6 +16,45 @@ npm run dev
 
 Your application will be available at `http://localhost:5173`.
 
+## API Integration
+
+This project is integrated with the Bootcamp Backend API. The API runs on `https://shiny-barbee-ferracio-72802286.koyeb.app/bootcamp`.
+
+### API Documentation
+
+- Full API documentation: [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md)
+- Migration guide: [docs/MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md)
+- API structure: [app/api/README.md](app/api/README.md)
+- Usage examples: [app/api/examples.ts](app/api/examples.ts)
+
+### API Services
+
+All API services are located in `app/api/services/`:
+
+```typescript
+import {
+  courseService,
+  moduleService,
+  userCourseService,
+} from "~/api/services";
+
+// List active courses
+const response = await courseService.getActive(0);
+
+// Get course by ID
+const course = await courseService.getById(courseId);
+
+// Enroll user in course
+await userCourseService.enroll(userId, courseId);
+```
+
+### Important Notes
+
+- The API must be running on port 8030
+- Mock data in `app/data/mockCourses.ts` is deprecated
+- All components now use real API data
+- Authentication is handled automatically by the HTTP client
+
 ## Building for Production
 
 Create a production build:
@@ -98,7 +137,7 @@ const courses = await apiGet<Course[]>("/courses");
 type LoginResponse = { token: string };
 const data = await apiPost<LoginResponse, { email: string; password: string }>(
   "/auth/login",
-  { email: "user@example.com", password: "secret" }
+  { email: "user@example.com", password: "secret" },
 );
 useAuthStore.getState().login(data.token);
 

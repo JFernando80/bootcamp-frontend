@@ -1,16 +1,41 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router";
+import { useState, useEffect } from "react";
+import { useNavigate, Link, useParams } from "react-router";
 import { ProtectedRoute } from "~/components/ProtectedRoute";
 import { BookOpen, CheckCircle, ArrowLeft } from "lucide-react";
 import { courseService } from "~/api/services/courseService";
 import type { CourseDTO } from "~/api/types";
-import { useAuthStore } from "~/stores/authStore";
 
-export default function CreateCourse() {
+export default function EditCourse() {
+  const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [loadingCourse, setLoadingCourse] = useState(true);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [course, setCourse] = useState<CourseDTO | null>(null);
+
+  useEffect(() => {
+    if (slug) {
+      loadCourse(slug);
+    }
+  }, [slug]);
+
+  const loadCourse = async (courseSlug: string) => {
+    try {
+      setLoadingCourse(true);
+      const response = await courseService.getById(courseSlug);
+      console.log("Curso carregado:", response);
+      setCourse(response);
+    } catch (err: any) {
+      console.error("Erro ao carregar curso:", err);
+      setError(
+        err.response?.data?.message ||
+          "Erro ao carregar curso. Tente novamente.",
+      );
+    } finally {
+      setLoadingCourse(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -23,44 +48,71 @@ export default function CreateCourse() {
       slug: (formData.get("slug") as string) || "",
       title: (formData.get("title") as string) || "",
       description: (formData.get("description") as string) || "",
-      createdAtS: new Date().toLocaleDateString("pt-BR"), // formato dd/MM/yyyy
+      createdAtS: course?.createdAtS || new Date().toLocaleDateString("pt-BR"),
+      publishedAtS: course?.publishedAtS,
     };
 
-    console.log("=== DEBUG: Criando curso ===");
+    console.log("=== DEBUG: Atualizando curso ===");
     console.log("1. Dados do curso:", courseData);
-    console.log("2. Token válido?:", !!useAuthStore.getState().token);
-    console.log("3. SessionId válido?:", !!useAuthStore.getState().sessionId);
-    console.log("4. Token length:", useAuthStore.getState().token?.length);
-    console.log("5. SessionId:", useAuthStore.getState().sessionId);
 
     try {
-      const response = await courseService.create(courseData);
-      console.log("Curso criado com sucesso:", response);
+      const response = await courseService.update(courseData.slug!, courseData);
+      console.log("Curso atualizado com sucesso:", response);
       setSuccess(true);
 
       // Redireciona após 2 segundos
       setTimeout(() => {
-        navigate("/myArea");
+        navigate("/manageCourses");
       }, 2000);
     } catch (err: any) {
-      console.error("=== ERRO AO CRIAR CURSO ===");
+      console.error("=== ERRO AO ATUALIZAR CURSO ===");
       console.error("Erro completo:", err);
       console.error("Response data:", err.response?.data);
-      console.error("Response status:", err.response?.status);
-      console.error("Response headers:", err.response?.headers);
-      console.error("Request headers:", err.config?.headers);
 
       const errorMessage =
         err.response?.data?.message ||
         err.response?.data?.title ||
-        err.response?.data?.detail ||
-        "Erro ao criar curso. Tente novamente.";
+        "Erro ao atualizar curso. Tente novamente.";
 
       setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
+
+  if (loadingCourse) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gray-50 py-8 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Carregando curso...</p>
+          </div>
+        </div>
+      </ProtectedRoute>
+    );
+  }
+
+  if (!course && !loadingCourse) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gray-50 py-8">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
+              <p className="text-red-800 mb-4">Curso não encontrado.</p>
+              <Link
+                to="/manageCourses"
+                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition"
+              >
+                <ArrowLeft className="h-5 w-5" />
+                Voltar para Gerenciar Cursos
+              </Link>
+            </div>
+          </div>
+        </div>
+      </ProtectedRoute>
+    );
+  }
 
   return (
     <ProtectedRoute>
@@ -69,11 +121,11 @@ export default function CreateCourse() {
           {/* Header */}
           <div className="mb-8">
             <Link
-              to="/myArea"
+              to="/manageCourses"
               className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition"
             >
               <ArrowLeft className="h-5 w-5" />
-              Voltar para Minha Área
+              Voltar para Gerenciar Cursos
             </Link>
 
             <div className="flex items-center gap-3">
@@ -82,8 +134,11 @@ export default function CreateCourse() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">
-                  Criar Novo Curso
+                  Editar Curso
                 </h1>
+                <p className="text-gray-600">
+                  Atualize as informações do curso
+                </p>
               </div>
             </div>
           </div>
@@ -91,8 +146,7 @@ export default function CreateCourse() {
           {/* Error Message */}
           {error && (
             <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-red-800 font-semibold">Erro ao criar curso</p>
-              <p className="text-red-700 text-sm">{error}</p>
+              <p className="text-red-800">{error}</p>
             </div>
           )}
 
@@ -102,7 +156,7 @@ export default function CreateCourse() {
               <CheckCircle className="h-5 w-5 text-green-600" />
               <div>
                 <p className="text-green-800 font-semibold">
-                  Curso criado com sucesso!
+                  Curso atualizado com sucesso!
                 </p>
                 <p className="text-green-700 text-sm">Redirecionando...</p>
               </div>
@@ -131,12 +185,13 @@ export default function CreateCourse() {
                     name="slug"
                     required
                     pattern="^[a-z0-9-]+$"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    defaultValue={course?.slug || ""}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-100"
                     placeholder="Ex: gestao-projetos-sociais"
-                    disabled={loading || success}
+                    disabled
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Use apenas letras minúsculas, números e hífens
+                    O slug não pode ser alterado após a criação
                   </p>
                 </div>
 
@@ -154,6 +209,7 @@ export default function CreateCourse() {
                     required
                     minLength={10}
                     maxLength={100}
+                    defaultValue={course?.title || ""}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Ex: Gestão de Projetos Sociais"
                     disabled={loading || success}
@@ -174,6 +230,7 @@ export default function CreateCourse() {
                     minLength={10}
                     maxLength={300}
                     rows={4}
+                    defaultValue={course?.description || ""}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Descreva o que os alunos aprenderão neste curso..."
                     disabled={loading || success}
@@ -186,7 +243,7 @@ export default function CreateCourse() {
             <div className="flex gap-4 justify-end">
               <button
                 type="button"
-                onClick={() => navigate("/myArea")}
+                onClick={() => navigate("/manageCourses")}
                 className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition cursor-pointer"
                 disabled={loading || success}
               >
@@ -195,20 +252,20 @@ export default function CreateCourse() {
               <button
                 type="submit"
                 disabled={loading || success}
-                className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition disabled:opacity-60 inline-flex items-center gap-2 cursor-pointer"
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-60 inline-flex items-center gap-2 cursor-pointer"
               >
                 {loading ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Criando...
+                    Salvando...
                   </>
                 ) : success ? (
                   <>
                     <CheckCircle className="h-5 w-5" />
-                    Criado!
+                    Salvo!
                   </>
                 ) : (
-                  "Criar Curso"
+                  "Salvar Alterações"
                 )}
               </button>
             </div>

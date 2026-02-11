@@ -27,36 +27,17 @@ export default function LoginCard() {
       return;
     }
 
-    // ===== LOGIN TEMPORÁRIO PARA TESTES (SEM BACKEND) =====
-    // Qualquer email e senha funcionam
     try {
-      // Simula um pequeno delay como se estivesse chamando a API
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Faz login mockado
-      store.login(null, 1, "test-public-key");
+      await loginUser({ email, password });
       navigate("/myArea");
     } catch (err: any) {
-      setError(err.message || "Erro ao fazer login");
+      console.error("Erro ao fazer login:", err);
+      setError(
+        err.response?.data?.message || err.message || "Erro ao fazer login",
+      );
     } finally {
       setLoading(false);
     }
-
-    // ===== CÓDIGO ORIGINAL (COMENTADO TEMPORARIAMENTE) =====
-    // if (email === "dev@test.com" && password) {
-    //   store.login(null, 1, "teest");
-    //   navigate("/myArea");
-    //   return;
-    // }
-
-    // try {
-    //   await loginUser({ email, password });
-    //   navigate("/myArea");
-    // } catch (err: any) {
-    //   setError(err.message || "Erro ao fazer login");
-    // } finally {
-    //   setLoading(false);
-    // }
   };
 
   return (

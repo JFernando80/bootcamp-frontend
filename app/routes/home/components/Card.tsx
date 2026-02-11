@@ -1,13 +1,14 @@
 import { Link } from "react-router";
+import { BookOpen } from "lucide-react";
 import type { LucideProps } from "lucide-react";
 import type { ForwardRefExoticComponent, RefAttributes } from "react";
 
 interface CardProps {
-  id: number;
+  id: string | number;
   title: string;
   organization: string;
   description: string;
-  icon: ForwardRefExoticComponent<
+  icon?: ForwardRefExoticComponent<
     Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>
   >;
 }
@@ -17,8 +18,10 @@ export function Card({
   title,
   organization,
   description,
-  icon: Icon,
+  icon,
 }: CardProps) {
+  const Icon = icon || BookOpen;
+
   return (
     <div
       data-slot="card"

@@ -13,11 +13,12 @@ interface AuthContextValue {
   sessionId: number | null;
   publicKey: string | null;
   expiresAt: number | null;
+  isAdmin: boolean;
   login: (
     token: string | null,
     sessionId: number,
     publicKey: string,
-    ttlMinutes?: number
+    ttlMinutes?: number,
   ) => void;
   logout: () => void;
   ready: boolean;
@@ -34,6 +35,7 @@ function preReadPersistedAuth() {
       sessionId: null,
       publicKey: null,
       sessionExpiry: null,
+      isAdmin: false,
     };
   try {
     const raw = localStorage.getItem("auth");
@@ -44,15 +46,17 @@ function preReadPersistedAuth() {
         sessionId: null,
         publicKey: null,
         sessionExpiry: null,
+        isAdmin: false,
       };
     const parsed = JSON.parse(raw);
     const st = parsed?.state || {};
     return {
       token: st.token ?? null,
-      isAuthenticated: !!st.sessionId,
+      isAuthenticated: st.isAuthenticated ?? false,
       sessionId: st.sessionId ?? null,
       publicKey: st.publicKey ?? null,
       sessionExpiry: st.sessionExpiry ?? null,
+      isAdmin: st.isAdmin ?? false,
     };
   } catch {
     return {
@@ -61,6 +65,7 @@ function preReadPersistedAuth() {
       sessionId: null,
       publicKey: null,
       sessionExpiry: null,
+      isAdmin: false,
     };
   }
 }
@@ -71,6 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const initial = preReadPersistedAuth();
   const {
     isAuthenticated,
+    isAdmin,
     token,
     sessionId,
     publicKey,
@@ -95,7 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         token: initial.token,
         sessionId: initial.sessionId,
         publicKey: initial.publicKey,
-        expiresAt: initial.sessionExpiry,
+        isAdmin: initial.isAdmin,
         login,
         logout,
         ready: false,
@@ -108,6 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       sessionId,
       publicKey,
       expiresAt: sessionExpiry,
+      isAdmin,
       login,
       logout,
       ready: true,
@@ -120,6 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     sessionId,
     publicKey,
     sessionExpiry,
+    isAdmin,
     login,
     logout,
     initial.isAuthenticated,
@@ -127,6 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     initial.sessionId,
     initial.publicKey,
     initial.sessionExpiry,
+    initial.isAdmin,
   ]);
 
   useEffect(() => {

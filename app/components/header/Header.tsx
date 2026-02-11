@@ -7,7 +7,7 @@ import { NavLinks } from "./NavLinks";
 import { AuthActions } from "./AuthActions";
 
 function HeaderInner() {
-  const { isAuthenticated, logout, ready } = useAuth();
+  const { isAuthenticated, isAdmin, logout, ready } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
@@ -32,6 +32,7 @@ function HeaderInner() {
             <NavLinks
               ready={ready}
               isAuthenticated={isAuthenticated}
+              isAdmin={isAdmin}
               onNavigate={closeMobile}
               layout="desktop"
             />
@@ -55,6 +56,7 @@ function HeaderInner() {
             <NavLinks
               ready={ready}
               isAuthenticated={isAuthenticated}
+              isAdmin={isAdmin}
               onNavigate={closeMobile}
               layout="mobile"
             />

@@ -1,14 +1,32 @@
-import { Search } from "lucide-react";
+import { Search, BookOpen } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { mockCourses } from "~/data/mockCourses";
+import { courseService } from "~/api/services";
+import type { CourseDTO } from "~/api/types";
 
 export function Banner() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showResults, setShowResults] = useState(false);
-  const [filteredCourses, setFilteredCourses] = useState(mockCourses);
+  const [filteredCourses, setFilteredCourses] = useState<CourseDTO[]>([]);
+  const [allCourses, setAllCourses] = useState<CourseDTO[]>([]);
+  const [loading, setLoading] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Carregar todos os cursos ao montar o componente
+    async function loadCourses() {
+      try {
+        const response = await courseService.getActive(0);
+        if (response.status === "success" && response.data) {
+          setAllCourses(response.data.content);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar cursos:", error);
+      }
+    }
+    loadCourses();
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -24,27 +42,44 @@ export function Banner() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSearch = (value: string) => {
+  const handleSearch = async (value: string) => {
     setSearchTerm(value);
+
     if (value.trim() === "") {
-      setFilteredCourses(mockCourses);
+      setFilteredCourses([]);
       setShowResults(false);
-    } else {
-      const filtered = mockCourses.filter(
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Buscar cursos por nome na API
+      const response = await courseService.searchByName(value, 0);
+
+      if (response.status === "success" && response.data) {
+        setFilteredCourses(response.data.content);
+        setShowResults(true);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar cursos:", error);
+      // Fallback para busca local
+      const filtered = allCourses.filter(
         (course) =>
-          course.title.toLowerCase().includes(value.toLowerCase()) ||
-          course.organization.toLowerCase().includes(value.toLowerCase()) ||
+          course.name.toLowerCase().includes(value.toLowerCase()) ||
           course.description.toLowerCase().includes(value.toLowerCase()),
       );
       setFilteredCourses(filtered);
       setShowResults(true);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSelectCourse = (courseId: number) => {
+  const handleSelectCourse = (courseId: string) => {
     navigate(`/courseDetails/${courseId}`);
     setSearchTerm("");
     setShowResults(false);
+    setFilteredCourses([]);
   };
 
   return (
@@ -73,32 +108,33 @@ export function Banner() {
           {/* Dropdown de Resultados */}
           {showResults && (
             <div className="absolute top-full mt-2 w-full bg-white rounded-lg shadow-xl max-h-96 overflow-y-auto z-50 text-left">
-              {filteredCourses.length > 0 ? (
-                filteredCourses.map((course) => {
-                  const Icon = course.icon;
-                  return (
-                    <button
-                      key={course.id}
-                      onClick={() => handleSelectCourse(course.id)}
-                      className="w-full px-4 py-3 hover:bg-gray-50 transition flex items-start gap-3 border-b border-gray-100 last:border-b-0 cursor-pointer text-left"
-                    >
-                      <div className="bg-gradient-to-br from-green-400 to-blue-500 p-2 rounded-lg flex-shrink-0">
-                        <Icon className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0 text-left">
-                        <h3 className="font-semibold text-gray-900 text-sm text-left">
-                          {course.title}
-                        </h3>
-                        <p className="text-xs text-gray-600 mt-0.5 text-left">
-                          {course.organization}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1 line-clamp-1 text-left">
-                          {course.description}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })
+              {loading ? (
+                <div className="px-4 py-8 text-center text-gray-500">
+                  <p className="text-sm">Buscando...</p>
+                </div>
+              ) : filteredCourses.length > 0 ? (
+                filteredCourses.map((course) => (
+                  <button
+                    key={course.id}
+                    onClick={() => handleSelectCourse(course.id!)}
+                    className="w-full px-4 py-3 hover:bg-gray-50 transition flex items-start gap-3 border-b border-gray-100 last:border-b-0 cursor-pointer text-left"
+                  >
+                    <div className="bg-gradient-to-br from-green-400 to-blue-500 p-2 rounded-lg flex-shrink-0">
+                      <BookOpen className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <h3 className="font-semibold text-gray-900 text-sm text-left">
+                        {course.name}
+                      </h3>
+                      <p className="text-xs text-gray-600 mt-0.5 text-left">
+                        Bootcamp
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-1 text-left">
+                        {course.description}
+                      </p>
+                    </div>
+                  </button>
+                ))
               ) : (
                 <div className="px-4 py-8 text-center text-gray-500">
                   <Search className="w-12 h-12 mx-auto mb-2 text-gray-300" />
@@ -113,11 +149,13 @@ export function Banner() {
         <button
           onClick={() => {
             if (searchTerm.trim() && filteredCourses.length > 0) {
-              handleSelectCourse(filteredCourses[0].id);
+              handleSelectCourse(filteredCourses[0].id!);
             }
           }}
           className="h-12 bg-green-600 hover:bg-green-800 text-white px-6 rounded-lg transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={!searchTerm.trim() || filteredCourses.length === 0}
+          disabled={
+            !searchTerm.trim() || filteredCourses.length === 0 || loading
+          }
         >
           Buscar
         </button>
