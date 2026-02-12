@@ -1,7 +1,7 @@
 // Agora usamos contexto para evitar flicker
 import React from "react";
 import { useAuth } from "~/context/AuthProvider";
-import { useNavigate } from "react-router";
+import { useNavigate, Link } from "react-router";
 import { MobileToggle } from "./MobileToggle";
 import { NavLinks } from "./NavLinks";
 import { AuthActions } from "./AuthActions";
@@ -25,7 +25,12 @@ function HeaderInner() {
         <div className="h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <MobileToggle open={mobileOpen} onToggle={toggleMobile} />
-            <h1 className="text-base sm:text-lg md:text-xl">NGO Cursos</h1>
+            <Link
+              to="/"
+              className="text-base sm:text-lg md:text-xl font-medium hover:text-green-700 transition"
+            >
+              NGO Cursos
+            </Link>
           </div>
 
           <nav id="primary-navigation" className="hidden md:block">

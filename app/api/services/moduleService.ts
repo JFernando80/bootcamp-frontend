@@ -43,7 +43,7 @@ export const moduleService = {
    * Listar módulos com filtro e paginação
    */
   async list(
-    page: number = 0,
+    page: number = 1,
     filters?: SearchCriteriaDTO[],
   ): Promise<JsonResponse<PaginatedResponse<ModuleDTO>>> {
     return apiPost<
@@ -63,7 +63,7 @@ export const moduleService = {
    * Buscar todos os módulos sem filtro
    */
   async getAll(
-    page: number = 0,
+    page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<ModuleDTO>>> {
     return this.list(page, []);
   },
@@ -73,12 +73,12 @@ export const moduleService = {
    */
   async getById(id: string): Promise<ModuleDTO | null> {
     try {
-      const response = await this.list(0, [
+      const response = await this.list(1, [
         { key: "id", operation: "EQUALS", value: id },
       ]);
 
-      if (response.data && response.data.content.length > 0) {
-        return response.data.content[0];
+      if (response.body && response.body.lista.length > 0) {
+        return response.body.lista[0];
       }
       return null;
     } catch (error) {
@@ -92,7 +92,7 @@ export const moduleService = {
    */
   async getByCourse(
     courseId: string,
-    page: number = 0,
+    page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<ModuleDTO>>> {
     return this.list(page, [
       { key: "courseId", operation: "EQUALS", value: courseId },
@@ -104,7 +104,7 @@ export const moduleService = {
    */
   async searchByName(
     name: string,
-    page: number = 0,
+    page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<ModuleDTO>>> {
     return this.list(page, [{ key: "name", operation: "LIKE", value: name }]);
   },

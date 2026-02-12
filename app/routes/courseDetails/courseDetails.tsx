@@ -46,8 +46,8 @@ export default function CourseDetails() {
 
         // Buscar módulos do curso
         const modulesResponse = await moduleService.getByCourse(courseId, 0);
-        if (modulesResponse.status === "success" && modulesResponse.data) {
-          setModules(modulesResponse.data.content);
+        if (modulesResponse.statusCode === 200 && modulesResponse.body) {
+          setModules(modulesResponse.body.lista);
         }
       } catch (err) {
         console.error("Erro ao carregar dados do curso:", err);
@@ -138,7 +138,7 @@ export default function CourseDetails() {
               </div>
 
               <h1 className="text-4xl md:text-5xl font-bold mb-4">
-                {course.name}
+                {course.title}
               </h1>
 
               <p className="text-lg text-white/90 mb-6">{course.description}</p>

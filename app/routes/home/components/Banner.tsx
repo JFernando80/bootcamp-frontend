@@ -17,9 +17,9 @@ export function Banner() {
     // Carregar todos os cursos ao montar o componente
     async function loadCourses() {
       try {
-        const response = await courseService.getActive(0);
-        if (response.status === "success" && response.data) {
-          setAllCourses(response.data.content);
+        const response = await courseService.getActive(1);
+        if (response.statusCode === 200 && response.body) {
+          setAllCourses(response.body.lista);
         }
       } catch (error) {
         console.error("Erro ao carregar cursos:", error);
@@ -53,11 +53,11 @@ export function Banner() {
 
     setLoading(true);
     try {
-      // Buscar cursos por nome na API
-      const response = await courseService.searchByName(value, 0);
+      // Buscar cursos por título na API
+      const response = await courseService.searchByTitle(value, 1);
 
-      if (response.status === "success" && response.data) {
-        setFilteredCourses(response.data.content);
+      if (response.statusCode === 200 && response.body) {
+        setFilteredCourses(response.body.lista);
         setShowResults(true);
       }
     } catch (error) {
@@ -65,7 +65,7 @@ export function Banner() {
       // Fallback para busca local
       const filtered = allCourses.filter(
         (course) =>
-          course.name.toLowerCase().includes(value.toLowerCase()) ||
+          course.title.toLowerCase().includes(value.toLowerCase()) ||
           course.description.toLowerCase().includes(value.toLowerCase()),
       );
       setFilteredCourses(filtered);
@@ -124,7 +124,7 @@ export function Banner() {
                     </div>
                     <div className="flex-1 min-w-0 text-left">
                       <h3 className="font-semibold text-gray-900 text-sm text-left">
-                        {course.name}
+                        {course.title}
                       </h3>
                       <p className="text-xs text-gray-600 mt-0.5 text-left">
                         Bootcamp

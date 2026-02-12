@@ -43,7 +43,7 @@ export const activityService = {
    * Listar atividades com filtro e paginação
    */
   async list(
-    page: number = 0,
+    page: number = 1,
     filters?: SearchCriteriaDTO[],
   ): Promise<JsonResponse<PaginatedResponse<ActivityDTO>>> {
     return apiPost<
@@ -63,7 +63,7 @@ export const activityService = {
    * Buscar todas as atividades sem filtro
    */
   async getAll(
-    page: number = 0,
+    page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<ActivityDTO>>> {
     return this.list(page, []);
   },
@@ -73,12 +73,12 @@ export const activityService = {
    */
   async getById(id: string): Promise<ActivityDTO | null> {
     try {
-      const response = await this.list(0, [
+      const response = await this.list(1, [
         { key: "id", operation: "EQUALS", value: id },
       ]);
 
-      if (response.data && response.data.content.length > 0) {
-        return response.data.content[0];
+      if (response.body && response.body.lista.length > 0) {
+        return response.body.lista[0];
       }
       return null;
     } catch (error) {
@@ -92,7 +92,7 @@ export const activityService = {
    */
   async getByModule(
     moduleId: string,
-    page: number = 0,
+    page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<ActivityDTO>>> {
     return this.list(page, [
       { key: "moduleId", operation: "EQUALS", value: moduleId },
@@ -104,7 +104,7 @@ export const activityService = {
    */
   async getByType(
     type: string,
-    page: number = 0,
+    page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<ActivityDTO>>> {
     return this.list(page, [{ key: "type", operation: "EQUALS", value: type }]);
   },
@@ -114,7 +114,7 @@ export const activityService = {
    */
   async searchByName(
     name: string,
-    page: number = 0,
+    page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<ActivityDTO>>> {
     return this.list(page, [{ key: "name", operation: "LIKE", value: name }]);
   },

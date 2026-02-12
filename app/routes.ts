@@ -5,6 +5,7 @@ export default [
   route("about", "routes/about/about.tsx"),
   route("login", "routes/login/login.tsx"),
   route("register", "routes/register/register.tsx"),
+  route("courses", "routes/courses/courses.tsx"),
   route("courseDetails/:courseId", "routes/courseDetails/courseDetails.tsx"),
   route("createCourse", "routes/createCourse/createCourse.tsx"),
   route("manageCourses", "routes/manageCourses/manageCourses.tsx"),
@@ -14,5 +15,4 @@ export default [
     route("certificates", "routes/myArea/certificates.tsx"),
     route("activities", "routes/myArea/activities.tsx"),
   ]),
-  route("courses/:courseId", "routes/course/Course.tsx"),
 ] satisfies RouteConfig;

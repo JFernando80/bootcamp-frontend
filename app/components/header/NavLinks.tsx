@@ -26,7 +26,7 @@ export function NavLinks({
   return (
     <ul className={listClass}>
       <li>
-        <Link to="/" className={itemClass} onClick={onNavigate}>
+        <Link to="/courses" className={itemClass} onClick={onNavigate}>
           Cursos
         </Link>
       </li>

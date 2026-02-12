@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card } from "./Card";
 import { courseService } from "~/api/services";
 import type { CourseDTO } from "~/api/types";
+import { CourseSkeletonGrid } from "~/components/CourseCardSkeleton";
 
 export function Catalog() {
   const [courses, setCourses] = useState<CourseDTO[]>([]);
@@ -12,10 +13,10 @@ export function Catalog() {
     async function loadCourses() {
       try {
         setLoading(true);
-        const response = await courseService.getActive(0);
+        const response = await courseService.getActive(1);
 
-        if (response.status === "success" && response.data) {
-          setCourses(response.data.content);
+        if (response.statusCode === 200 && response.body) {
+          setCourses(response.body.lista);
         }
       } catch (err) {
         console.error("Erro ao carregar cursos:", err);
@@ -34,7 +35,9 @@ export function Catalog() {
     return (
       <section className="flex flex-col items-center text-center py-12 px-60 sm:px-10">
         <h2 className="text-3xl font-bold mb-14 mt-2">CATÁLOGO DE CURSOS</h2>
-        <div className="text-gray-600">Carregando cursos...</div>
+        <div className="w-full max-w-[1400px]">
+          <CourseSkeletonGrid count={8} />
+        </div>
       </section>
     );
   }
@@ -60,7 +63,7 @@ export function Catalog() {
             <Card
               key={course.id}
               id={course.id!}
-              title={course.name}
+              title={course.title}
               organization="Bootcamp"
               description={course.description}
             />

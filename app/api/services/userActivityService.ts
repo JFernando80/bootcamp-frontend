@@ -48,7 +48,7 @@ export const userActivityService = {
    * Listar relações com filtro e paginação
    */
   async list(
-    page: number = 0,
+    page: number = 1,
     filters?: SearchCriteriaDTO[],
   ): Promise<JsonResponse<PaginatedResponse<UserActivityDTO>>> {
     return apiPost<
@@ -69,7 +69,7 @@ export const userActivityService = {
    */
   async getByUser(
     userId: string,
-    page: number = 0,
+    page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<UserActivityDTO>>> {
     return this.list(page, [
       { key: "userId", operation: "EQUALS", value: userId },
@@ -81,7 +81,7 @@ export const userActivityService = {
    */
   async getByActivity(
     activityId: string,
-    page: number = 0,
+    page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<UserActivityDTO>>> {
     return this.list(page, [
       { key: "activityId", operation: "EQUALS", value: activityId },
@@ -94,7 +94,7 @@ export const userActivityService = {
   async getByUserAndStatus(
     userId: string,
     status: string,
-    page: number = 0,
+    page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<UserActivityDTO>>> {
     return this.list(page, [
       { key: "userId", operation: "EQUALS", value: userId },
@@ -107,7 +107,7 @@ export const userActivityService = {
    */
   async getCompletedByUser(
     userId: string,
-    page: number = 0,
+    page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<UserActivityDTO>>> {
     return this.list(page, [
       { key: "userId", operation: "EQUALS", value: userId },

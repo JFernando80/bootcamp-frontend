@@ -48,7 +48,7 @@ export const userModuleService = {
    * Listar relações com filtro e paginação
    */
   async list(
-    page: number = 0,
+    page: number = 1,
     filters?: SearchCriteriaDTO[],
   ): Promise<JsonResponse<PaginatedResponse<UserModuleDTO>>> {
     return apiPost<
@@ -69,7 +69,7 @@ export const userModuleService = {
    */
   async getByUser(
     userId: string,
-    page: number = 0,
+    page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<UserModuleDTO>>> {
     return this.list(page, [
       { key: "userId", operation: "EQUALS", value: userId },
@@ -81,7 +81,7 @@ export const userModuleService = {
    */
   async getByModule(
     moduleId: string,
-    page: number = 0,
+    page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<UserModuleDTO>>> {
     return this.list(page, [
       { key: "moduleId", operation: "EQUALS", value: moduleId },
@@ -94,7 +94,7 @@ export const userModuleService = {
   async getByUserAndStatus(
     userId: string,
     status: string,
-    page: number = 0,
+    page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<UserModuleDTO>>> {
     return this.list(page, [
       { key: "userId", operation: "EQUALS", value: userId },

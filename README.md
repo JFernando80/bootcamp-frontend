@@ -22,6 +22,7 @@ This project is integrated with the Bootcamp Backend API. The API runs on `https
 
 ### API Documentation
 
+- **Authentication (How it works)**: [docs/AUTENTICACAO.md](docs/AUTENTICACAO.md) ⭐
 - Full API documentation: [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md)
 - Migration guide: [docs/MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md)
 - API structure: [app/api/README.md](app/api/README.md)
@@ -64,6 +65,22 @@ npm run build
 ```
 
 ## Deployment
+
+### Vercel Deployment (Recomendado)
+
+Este projeto está configurado para deploy fácil na Vercel:
+
+1. Faça push do código para GitHub/GitLab/Bitbucket
+2. Conecte o repositório na Vercel
+3. Deploy automático! 🚀
+
+**Documentação completa**: [DEPLOY.md](DEPLOY.md)
+
+**Configuração**: O arquivo `vercel.json` já está configurado com:
+
+- Build command: `npm run build`
+- Output directory: `build/client`
+- Rewrites para SPA routing
 
 ### Docker Deployment
 

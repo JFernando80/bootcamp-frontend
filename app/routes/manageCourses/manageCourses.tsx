@@ -40,13 +40,13 @@ export default function ManageCourses() {
       setError(null);
       const response = await courseService.list();
       console.log("Cursos carregados:", response);
-      const coursesList = response?.data?.content || [];
+      const coursesList = response?.body?.lista || [];
       setCourses(coursesList);
       setFilteredCourses(coursesList);
     } catch (err: any) {
       console.error("Erro ao carregar cursos:", err);
       setError(
-        err.response?.data?.message ||
+        err.response?.body?.message ||
           "Erro ao carregar cursos. Tente novamente.",
       );
     } finally {
@@ -64,7 +64,7 @@ export default function ManageCourses() {
     } catch (err: any) {
       console.error("Erro ao deletar curso:", err);
       alert(
-        err.response?.data?.message ||
+        err.response?.body?.message ||
           "Erro ao deletar curso. Tente novamente.",
       );
     }

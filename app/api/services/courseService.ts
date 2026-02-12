@@ -16,10 +16,7 @@ export const courseService = {
    * Criar um novo curso
    */
   async create(course: CourseDTO): Promise<JsonResponse<CourseDTO>> {
-    return apiPost<JsonResponse<CourseDTO>, CourseDTO>(
-      `${BASE_PATH}/cadastro`,
-      course,
-    );
+    return apiPost<JsonResponse<CourseDTO>, CourseDTO>(BASE_PATH, course);
   },
 
   /**
@@ -29,29 +26,33 @@ export const courseService = {
     slug: string,
     course: CourseDTO,
   ): Promise<JsonResponse<CourseDTO>> {
-    return apiPut<JsonResponse<CourseDTO>, CourseDTO>(
-      `${BASE_PATH}/atualizar`,
-      course,
-    );
+    return apiPut<JsonResponse<CourseDTO>, CourseDTO>(BASE_PATH, course);
   },
 
   /**
    * Deletar um curso
    */
   async delete(slug: string): Promise<JsonResponse<void>> {
-    return apiDelete<JsonResponse<void>>(`${BASE_PATH}/deletar?slug=${slug}`);
+    return apiDelete<JsonResponse<void>>(`${BASE_PATH}?slug=${slug}`);
   },
 
   /**
    * Listar cursos com filtro e paginação
    */
   async list(
-    titulo?: string,
+    page: number = 1,
+    filters?: SearchCriteriaDTO[],
   ): Promise<JsonResponse<PaginatedResponse<CourseDTO>>> {
-    const url = titulo
-      ? `${BASE_PATH}/listar?titulo=${encodeURIComponent(titulo)}`
-      : `${BASE_PATH}/listar`;
-    return apiGet<JsonResponse<PaginatedResponse<CourseDTO>>>(url);
+    console.log(
+      "courseService.list - Página:",
+      page,
+      "Filtros:",
+      JSON.stringify(filters, null, 2),
+    );
+    return apiPost<
+      JsonResponse<PaginatedResponse<CourseDTO>>,
+      SearchCriteriaDTO[]
+    >(`${BASE_PATH}/filtro/${page}`, filters || []);
   },
 
   /**
@@ -59,10 +60,12 @@ export const courseService = {
    */
   async getById(slug: string): Promise<CourseDTO | null> {
     try {
-      const response = await this.list(slug);
+      const response = await this.list(1, [
+        { key: "slug", operation: "EQUALS", value: slug },
+      ]);
 
-      if (response.data && response.data.content.length > 0) {
-        return response.data.content[0];
+      if (response.body && response.body.lista.length > 0) {
+        return response.body.lista[0];
       }
       return null;
     } catch (error) {
@@ -74,8 +77,10 @@ export const courseService = {
   /**
    * Buscar todos os cursos sem filtro
    */
-  async getAll(): Promise<JsonResponse<PaginatedResponse<CourseDTO>>> {
-    return this.list();
+  async getAll(
+    page: number = 1,
+  ): Promise<JsonResponse<PaginatedResponse<CourseDTO>>> {
+    return this.list(page, []);
   },
 
   /**
@@ -83,7 +88,24 @@ export const courseService = {
    */
   async searchByTitle(
     title: string,
+    page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<CourseDTO>>> {
-    return this.list(title);
+    return this.list(page, [{ key: "title", operation: "LIKE", value: title }]);
+  },
+
+  /**
+   * Buscar campos disponíveis para filtros
+   */
+  async getFields(): Promise<JsonResponse<any>> {
+    return apiGet<JsonResponse<any>>(`${BASE_PATH}/consulta`);
+  },
+
+  /**
+   * Buscar cursos ativos (publicados)
+   */
+  async getActive(
+    page: number = 1,
+  ): Promise<JsonResponse<PaginatedResponse<CourseDTO>>> {
+    return this.getAll(page);
   },
 };

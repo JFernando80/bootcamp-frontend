@@ -45,15 +45,15 @@ export default function CreateCourse() {
     } catch (err: any) {
       console.error("=== ERRO AO CRIAR CURSO ===");
       console.error("Erro completo:", err);
-      console.error("Response data:", err.response?.data);
+      console.error("Response body:", err.response?.body);
       console.error("Response status:", err.response?.status);
       console.error("Response headers:", err.response?.headers);
       console.error("Request headers:", err.config?.headers);
 
       const errorMessage =
-        err.response?.data?.message ||
-        err.response?.data?.title ||
-        err.response?.data?.detail ||
+        err.response?.body?.message ||
+        err.response?.body?.title ||
+        err.response?.body?.detail ||
         "Erro ao criar curso. Tente novamente.";
 
       setError(errorMessage);

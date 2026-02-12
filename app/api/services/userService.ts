@@ -37,7 +37,7 @@ export const userService = {
    * Listar usuários com filtro e paginação
    */
   async list(
-    page: number = 0,
+    page: number = 1,
     filters?: SearchCriteriaDTO[],
   ): Promise<JsonResponse<PaginatedResponse<UserDTO>>> {
     return apiPost<
@@ -58,12 +58,12 @@ export const userService = {
    */
   async getById(id: string): Promise<UserDTO | null> {
     try {
-      const response = await this.list(0, [
+      const response = await this.list(1, [
         { key: "id", operation: "EQUALS", value: id },
       ]);
 
-      if (response.data && response.data.content.length > 0) {
-        return response.data.content[0];
+      if (response.body && response.body.lista.length > 0) {
+        return response.body.lista[0];
       }
       return null;
     } catch (error) {
@@ -77,12 +77,12 @@ export const userService = {
    */
   async getByEmail(email: string): Promise<UserDTO | null> {
     try {
-      const response = await this.list(0, [
+      const response = await this.list(1, [
         { key: "email", operation: "EQUALS", value: email },
       ]);
 
-      if (response.data && response.data.content.length > 0) {
-        return response.data.content[0];
+      if (response.body && response.body.lista.length > 0) {
+        return response.body.lista[0];
       }
       return null;
     } catch (error) {
@@ -96,7 +96,7 @@ export const userService = {
    */
   async searchByName(
     name: string,
-    page: number = 0,
+    page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<UserDTO>>> {
     return this.list(page, [{ key: "name", operation: "LIKE", value: name }]);
   },

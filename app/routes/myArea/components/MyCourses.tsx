@@ -74,7 +74,7 @@ const MyCourses = () => {
             Você ainda não está inscrito em nenhum curso.
           </p>
           <Link
-            to="/"
+            to="/courses"
             className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition"
           >
             Explorar cursos

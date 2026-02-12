@@ -15,31 +15,34 @@ const httpClient: AxiosInstance = axios.create({
   timeout: 15000,
 });
 
+/**
+ * INTERCEPTOR DE REQUEST (AUTENTICAÇÃO AUTOMÁTICA)
+ *
+ * Este interceptor adiciona AUTOMATICAMENTE o header de autenticação
+ * em TODAS as requisições feitas através do httpClient.
+ *
+ * Header adicionado:
+ * - 'Authorization': jwtToken (apenas o token, SEM prefixo "Bearer")
+ *
+ * IMPORTANTE: O header Authorization recebe apenas a string do token,
+ * não use o formato "Bearer {token}"!
+ *
+ * NÃO é necessário adicionar esse header manualmente nas chamadas de API!
+ *
+ * Documentação completa: docs/AUTENTICACAO.md
+ */
 httpClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const { token, sessionId } = useAuthStore.getState();
-
-    // Log do estado de autenticação
-    console.log("🔐 Auth State:", {
-      hasToken: !!token,
-      tokenLength: token?.length,
-      hasSessionId: !!sessionId,
-      sessionId: sessionId,
-    });
+    const { token } = useAuthStore.getState();
 
     // Garantir que headers existe
     if (!config.headers) {
       config.headers = {} as any;
     }
 
-    // Adicionar sessionId no header 'token'
-    if (sessionId) {
-      config.headers.set("token", String(sessionId));
-    }
-
-    // Adicionar JWT no header 'Authorization'
+    // Adicionar JWT no header 'Authorization' (apenas o token, sem Bearer)
     if (token) {
-      config.headers.set("Authorization", `Bearer ${token}`);
+      config.headers.set("Authorization", token);
     }
 
     // Log para debug
@@ -47,7 +50,6 @@ httpClient.interceptors.request.use(
       method: config.method?.toUpperCase(),
       url: config.url,
       headers: {
-        token: config.headers.get("token"),
         Authorization: config.headers.get("Authorization"),
         "Content-Type": config.headers.get("Content-Type"),
       },
@@ -59,6 +61,18 @@ httpClient.interceptors.request.use(
   (error) => Promise.reject(error as AxiosError),
 );
 
+/**
+ * INTERCEPTOR DE RESPONSE (LOGOUT AUTOMÁTICO EM 401)
+ *
+ * Este interceptor monitora as respostas da API e faz logout automático
+ * quando recebe status 401 (Unauthorized).
+ *
+ * Comportamento:
+ * - Se receber 401: limpa authStore e redireciona para /login
+ * - Outros erros: apenas propaga o erro
+ *
+ * Documentação completa: docs/AUTENTICACAO.md
+ */
 httpClient.interceptors.response.use(
   (response: AxiosResponse) => {
     console.log("✅ Response:", {

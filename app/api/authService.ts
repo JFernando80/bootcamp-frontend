@@ -95,7 +95,9 @@ export async function loginUser(form: LoginBody): Promise<LoginResponse> {
   const resp = await httpClient.post<LoginResponse>(
     "/bootcamp/user/login",
     loginDTO,
-    { headers: { token: id } },
+    {
+      headers: { token: id },
+    },
   );
 
   console.log("🔑 Login Response completa:", resp.data);

@@ -33,7 +33,7 @@ export default function LoginCard() {
     } catch (err: any) {
       console.error("Erro ao fazer login:", err);
       setError(
-        err.response?.data?.message || err.message || "Erro ao fazer login",
+        err.response?.body?.message || err.message || "Erro ao fazer login",
       );
     } finally {
       setLoading(false);

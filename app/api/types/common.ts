@@ -1,19 +1,15 @@
 // Tipos comuns da API
 
 export interface JsonResponse<T = any> {
-  status: "success" | "error";
+  statusCode: number;
   message: string;
-  data: T | null;
+  body: T | null;
 }
 
 export interface PaginatedResponse<T> {
-  content: T[];
-  totalElements: number;
-  totalPages: number;
-  number: number;
-  size: number;
-  first: boolean;
-  last: boolean;
+  lista: T[];
+  total: number;
+  pagina: number;
 }
 
 export interface SearchCriteriaDTO {

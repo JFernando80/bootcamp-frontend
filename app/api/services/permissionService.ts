@@ -50,7 +50,7 @@ export const permissionService = {
    * Listar permissões com filtro e paginação
    */
   async list(
-    page: number = 0,
+    page: number = 1,
     filters?: SearchCriteriaDTO[],
   ): Promise<JsonResponse<PaginatedResponse<PermissionDTO>>> {
     return apiPost<

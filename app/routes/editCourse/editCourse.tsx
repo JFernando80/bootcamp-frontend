@@ -29,7 +29,7 @@ export default function EditCourse() {
     } catch (err: any) {
       console.error("Erro ao carregar curso:", err);
       setError(
-        err.response?.data?.message ||
+        err.response?.body?.message ||
           "Erro ao carregar curso. Tente novamente.",
       );
     } finally {
@@ -67,11 +67,11 @@ export default function EditCourse() {
     } catch (err: any) {
       console.error("=== ERRO AO ATUALIZAR CURSO ===");
       console.error("Erro completo:", err);
-      console.error("Response data:", err.response?.data);
+      console.error("Response body:", err.response?.body);
 
       const errorMessage =
-        err.response?.data?.message ||
-        err.response?.data?.title ||
+        err.response?.body?.message ||
+        err.response?.body?.title ||
         "Erro ao atualizar curso. Tente novamente.";
 
       setError(errorMessage);
