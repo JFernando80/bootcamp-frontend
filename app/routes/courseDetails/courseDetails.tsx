@@ -66,10 +66,10 @@ export default function CourseDetails() {
       return;
     }
 
-    if (course?.id) {
+    if (course?.slug || course?.id) {
       // Aqui você pode adicionar lógica para inscrever o usuário
       // Exemplo: await userCourseService.enroll(userId, course.id);
-      navigate(`/courses/${course.id}`);
+      navigate(`/courses/${course.slug || course.id}`);
     }
   };
 

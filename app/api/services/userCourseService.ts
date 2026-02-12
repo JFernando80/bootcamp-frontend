@@ -72,7 +72,7 @@ export const userCourseService = {
     page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<UserCourseDTO>>> {
     return this.list(page, [
-      { key: "userId", operation: "EQUALS", value: userId },
+      { key: "userId", operation: "EQUAL", value: userId },
     ]);
   },
 
@@ -84,7 +84,7 @@ export const userCourseService = {
     page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<UserCourseDTO>>> {
     return this.list(page, [
-      { key: "courseId", operation: "EQUALS", value: courseId },
+      { key: "courseId", operation: "EQUAL", value: courseId },
     ]);
   },
 
@@ -97,8 +97,8 @@ export const userCourseService = {
     page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<UserCourseDTO>>> {
     return this.list(page, [
-      { key: "userId", operation: "EQUALS", value: userId },
-      { key: "status", operation: "EQUALS", value: status },
+      { key: "userId", operation: "EQUAL", value: userId },
+      { key: "status", operation: "EQUAL", value: status },
     ]);
   },
 

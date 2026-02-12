@@ -58,10 +58,10 @@ export const courseService = {
   /**
    * Buscar curso por slug
    */
-  async getById(slug: string): Promise<CourseDTO | null> {
+  async getById(id: string): Promise<CourseDTO | null> {
     try {
       const response = await this.list(1, [
-        { key: "slug", operation: "EQUALS", value: slug },
+        { key: "slug", operation: "EQUAL", value: id },
       ]);
 
       if (response.body && response.body.lista.length > 0) {
@@ -90,7 +90,9 @@ export const courseService = {
     title: string,
     page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<CourseDTO>>> {
-    return this.list(page, [{ key: "title", operation: "LIKE", value: title }]);
+    return this.list(page, [
+      { key: "title", operation: "MATCH", value: title },
+    ]);
   },
 
   /**

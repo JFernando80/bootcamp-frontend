@@ -15,13 +15,15 @@ export interface PaginatedResponse<T> {
 export interface SearchCriteriaDTO {
   key: string;
   operation:
-    | "EQUALS"
-    | "LIKE"
+    | "EQUAL"
+    | "NOT_EQUAL"
+    | "MATCH"
+    | "MATCH_START"
+    | "MATCH_END"
     | "GREATER_THAN"
     | "LESS_THAN"
-    | "GREATER_THAN_OR_EQUAL"
-    | "LESS_THAN_OR_EQUAL"
-    | "NOT_EQUALS";
+    | "GREATER_THAN_EQUAL"
+    | "LESS_THAN_EQUAL";
   value: string | number | boolean;
 }
 

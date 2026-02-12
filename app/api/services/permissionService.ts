@@ -247,7 +247,7 @@ export const userPermissionTypeService = {
     page: number = 0,
   ): Promise<JsonResponse<PaginatedResponse<UserPermissionTypeDTO>>> {
     return this.list(page, [
-      { key: "userId", operation: "EQUALS", value: userId },
+      { key: "userId", operation: "EQUAL", value: userId },
     ]);
   },
 };
@@ -320,7 +320,7 @@ export const perfilPermissionTypeService = {
     page: number = 0,
   ): Promise<JsonResponse<PaginatedResponse<PerfilPermissionTypeDTO>>> {
     return this.list(page, [
-      { key: "perfilId", operation: "EQUALS", value: perfilId },
+      { key: "perfilId", operation: "EQUAL", value: perfilId },
     ]);
   },
 };

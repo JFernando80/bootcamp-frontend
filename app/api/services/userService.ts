@@ -59,7 +59,7 @@ export const userService = {
   async getById(id: string): Promise<UserDTO | null> {
     try {
       const response = await this.list(1, [
-        { key: "id", operation: "EQUALS", value: id },
+        { key: "id", operation: "EQUAL", value: id },
       ]);
 
       if (response.body && response.body.lista.length > 0) {
@@ -78,7 +78,7 @@ export const userService = {
   async getByEmail(email: string): Promise<UserDTO | null> {
     try {
       const response = await this.list(1, [
-        { key: "email", operation: "EQUALS", value: email },
+        { key: "email", operation: "EQUAL", value: email },
       ]);
 
       if (response.body && response.body.lista.length > 0) {
@@ -98,6 +98,6 @@ export const userService = {
     name: string,
     page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<UserDTO>>> {
-    return this.list(page, [{ key: "name", operation: "LIKE", value: name }]);
+    return this.list(page, [{ key: "name", operation: "MATCH", value: name }]);
   },
 };

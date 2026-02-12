@@ -85,7 +85,7 @@ export default function Courses() {
     if (searchTerm.trim()) {
       const searchFilter: SearchCriteriaDTO = {
         key: "title",
-        operation: "LIKE",
+        operation: "MATCH",
         value: searchTerm,
       };
       setFilters([searchFilter]);
@@ -108,13 +108,15 @@ export default function Courses() {
 
     // Validar que a operação é uma das válidas
     const validOperations = [
-      "EQUALS",
-      "LIKE",
+      "EQUAL",
+      "NOT_EQUAL",
+      "MATCH",
+      "MATCH_START",
+      "MATCH_END",
       "GREATER_THAN",
       "LESS_THAN",
-      "GREATER_THAN_OR_EQUAL",
-      "LESS_THAN_OR_EQUAL",
-      "NOT_EQUALS",
+      "GREATER_THAN_EQUAL",
+      "LESS_THAN_EQUAL",
     ];
     if (!validOperations.includes(operation)) {
       console.error("Operação inválida:", operation);
@@ -248,10 +250,15 @@ export default function Courses() {
                     id="filterOperation"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="EQUALS">Igual a</option>
-                    <option value="LIKE">Contém</option>
+                    <option value="EQUAL">Igual a</option>
+                    <option value="NOT_EQUAL">Diferente de</option>
+                    <option value="MATCH">Contém</option>
+                    <option value="MATCH_START">Começa com</option>
+                    <option value="MATCH_END">Termina com</option>
                     <option value="GREATER_THAN">Maior que</option>
                     <option value="LESS_THAN">Menor que</option>
+                    <option value="GREATER_THAN_EQUAL">Maior ou igual a</option>
+                    <option value="LESS_THAN_EQUAL">Menor ou igual a</option>
                   </select>
                 </div>
                 <div>
@@ -341,7 +348,7 @@ export default function Courses() {
               {courses.map((course) => (
                 <Card
                   key={course.id}
-                  id={course.id!}
+                  id={course.slug || course.id!}
                   title={course.title}
                   organization="Bootcamp"
                   description={course.description}

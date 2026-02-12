@@ -74,7 +74,7 @@ export const activityService = {
   async getById(id: string): Promise<ActivityDTO | null> {
     try {
       const response = await this.list(1, [
-        { key: "id", operation: "EQUALS", value: id },
+        { key: "id", operation: "EQUAL", value: id },
       ]);
 
       if (response.body && response.body.lista.length > 0) {
@@ -95,7 +95,7 @@ export const activityService = {
     page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<ActivityDTO>>> {
     return this.list(page, [
-      { key: "moduleId", operation: "EQUALS", value: moduleId },
+      { key: "moduleId", operation: "EQUAL", value: moduleId },
     ]);
   },
 
@@ -106,7 +106,7 @@ export const activityService = {
     type: string,
     page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<ActivityDTO>>> {
-    return this.list(page, [{ key: "type", operation: "EQUALS", value: type }]);
+    return this.list(page, [{ key: "type", operation: "EQUAL", value: type }]);
   },
 
   /**
@@ -116,6 +116,6 @@ export const activityService = {
     name: string,
     page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<ActivityDTO>>> {
-    return this.list(page, [{ key: "name", operation: "LIKE", value: name }]);
+    return this.list(page, [{ key: "name", operation: "MATCH", value: name }]);
   },
 };

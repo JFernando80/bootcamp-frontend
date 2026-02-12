@@ -74,7 +74,7 @@ export const moduleService = {
   async getById(id: string): Promise<ModuleDTO | null> {
     try {
       const response = await this.list(1, [
-        { key: "id", operation: "EQUALS", value: id },
+        { key: "id", operation: "EQUAL", value: id },
       ]);
 
       if (response.body && response.body.lista.length > 0) {
@@ -95,7 +95,7 @@ export const moduleService = {
     page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<ModuleDTO>>> {
     return this.list(page, [
-      { key: "courseId", operation: "EQUALS", value: courseId },
+      { key: "courseId", operation: "EQUAL", value: courseId },
     ]);
   },
 
@@ -106,6 +106,6 @@ export const moduleService = {
     name: string,
     page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<ModuleDTO>>> {
-    return this.list(page, [{ key: "name", operation: "LIKE", value: name }]);
+    return this.list(page, [{ key: "name", operation: "MATCH", value: name }]);
   },
 };

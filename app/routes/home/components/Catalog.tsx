@@ -62,7 +62,7 @@ export function Catalog() {
           {courses.map((course) => (
             <Card
               key={course.id}
-              id={course.id!}
+              id={course.slug || course.id!}
               title={course.title}
               organization="Bootcamp"
               description={course.description}

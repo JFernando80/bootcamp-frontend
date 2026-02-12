@@ -75,8 +75,8 @@ export function Banner() {
     }
   };
 
-  const handleSelectCourse = (courseId: string) => {
-    navigate(`/courseDetails/${courseId}`);
+  const handleSelectCourse = (courseSlug: string) => {
+    navigate(`/courses/${courseSlug}`);
     setSearchTerm("");
     setShowResults(false);
     setFilteredCourses([]);
@@ -116,7 +116,9 @@ export function Banner() {
                 filteredCourses.map((course) => (
                   <button
                     key={course.id}
-                    onClick={() => handleSelectCourse(course.id!)}
+                    onClick={() =>
+                      handleSelectCourse(course.slug || course.id!)
+                    }
                     className="w-full px-4 py-3 hover:bg-gray-50 transition flex items-start gap-3 border-b border-gray-100 last:border-b-0 cursor-pointer text-left"
                   >
                     <div className="bg-gradient-to-br from-green-400 to-blue-500 p-2 rounded-lg flex-shrink-0">

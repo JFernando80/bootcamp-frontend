@@ -306,13 +306,13 @@ export async function exemploBuscarStatusCurso() {
  */
 export async function exemploFiltrosAvancados() {
   const response = await courseService.list(0, [
-    { key: "status", operation: "EQUALS", value: "ACTIVE" },
-    { key: "level", operation: "EQUALS", value: "Iniciante" },
-    { key: "name", operation: "LIKE", value: "React" },
+    { key: "status", operation: "EQUAL", value: "ACTIVE" },
+    { key: "level", operation: "EQUAL", value: "Iniciante" },
+    { key: "name", operation: "MATCH", value: "React" },
   ]);
 
-  if (response.status === "success" && response.data) {
-    console.log("Cursos filtrados:", response.data.content);
+  if (response.statusCode === 200 && response.body) {
+    console.log("Cursos filtrados:", response.body.lista);
   }
 }
 
@@ -324,14 +324,14 @@ export async function exemploBuscarCursosPorDuracao(
   maxHoras: number,
 ) {
   const response = await courseService.list(0, [
-    { key: "duration", operation: "GREATER_THAN_OR_EQUAL", value: minHoras },
-    { key: "duration", operation: "LESS_THAN_OR_EQUAL", value: maxHoras },
+    { key: "duration", operation: "GREATER_THAN_EQUAL", value: minHoras },
+    { key: "duration", operation: "LESS_THAN_EQUAL", value: maxHoras },
   ]);
 
-  if (response.status === "success" && response.data) {
+  if (response.statusCode === 200 && response.body) {
     console.log(
       `Cursos entre ${minHoras} e ${maxHoras} horas:`,
-      response.data.content.length,
+      response.body.lista.length,
     );
   }
 }

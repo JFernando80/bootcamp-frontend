@@ -25,7 +25,7 @@ export function Card({
   return (
     <div
       data-slot="card"
-      className="bg-card text-card-foreground flex flex-col gap-6 rounded-xl py-6 pt-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+      className="bg-card text-card-foreground h-full flex flex-col gap-6 rounded-xl py-6 pt-0 shadow-md hover:shadow-lg transition-shadow"
     >
       <div className="aspect-video bg-gray-200 rounded-t-lg overflow-hidden">
         <div className="w-full h-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center">
@@ -48,15 +48,15 @@ export function Card({
         </h3>
         <p
           data-slot="card-description"
-          className="text-muted-foreground text-sm text-left text-gray-500"
+          className="text-muted-foreground text-sm text-left text-gray-500 line-clamp-3 overflow-hidden"
         >
           {description}
         </p>
       </section>
 
-      <div data-slot="card-content" className="px-6">
+      <div data-slot="card-content" className="px-6 mt-auto">
         <Link
-          to={`/courseDetails/${id}`}
+          to={`/courses/${id}`}
           className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 h-10 w-full bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
         >
           Ver Curso

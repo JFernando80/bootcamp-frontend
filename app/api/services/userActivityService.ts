@@ -72,7 +72,7 @@ export const userActivityService = {
     page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<UserActivityDTO>>> {
     return this.list(page, [
-      { key: "userId", operation: "EQUALS", value: userId },
+      { key: "userId", operation: "EQUAL", value: userId },
     ]);
   },
 
@@ -84,7 +84,7 @@ export const userActivityService = {
     page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<UserActivityDTO>>> {
     return this.list(page, [
-      { key: "activityId", operation: "EQUALS", value: activityId },
+      { key: "activityId", operation: "EQUAL", value: activityId },
     ]);
   },
 
@@ -97,8 +97,8 @@ export const userActivityService = {
     page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<UserActivityDTO>>> {
     return this.list(page, [
-      { key: "userId", operation: "EQUALS", value: userId },
-      { key: "status", operation: "EQUALS", value: status },
+      { key: "userId", operation: "EQUAL", value: userId },
+      { key: "status", operation: "EQUAL", value: status },
     ]);
   },
 
@@ -110,8 +110,8 @@ export const userActivityService = {
     page: number = 1,
   ): Promise<JsonResponse<PaginatedResponse<UserActivityDTO>>> {
     return this.list(page, [
-      { key: "userId", operation: "EQUALS", value: userId },
-      { key: "completed", operation: "EQUALS", value: true },
+      { key: "userId", operation: "EQUAL", value: userId },
+      { key: "completed", operation: "EQUAL", value: true },
     ]);
   },
 
@@ -158,11 +158,11 @@ export const userActivityService = {
     score: number,
   ): Promise<JsonResponse<UserActivityDTO>> {
     const current = await this.list(0, [
-      { key: "id", operation: "EQUALS", value: id },
+      { key: "id", operation: "EQUAL", value: id },
     ]);
 
-    if (current.data && current.data.content.length > 0) {
-      const userActivity = current.data.content[0];
+    if (current.body && current.body.lista.length > 0) {
+      const userActivity = current.body.lista[0];
       const attempts = (userActivity.attempts || 0) + 1;
 
       return apiPut<JsonResponse<UserActivityDTO>, Partial<UserActivityDTO>>(

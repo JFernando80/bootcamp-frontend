@@ -86,7 +86,7 @@ const MyCourses = () => {
             <Link
               to={`/courses/${userCourse.courseId}`}
               key={userCourse.id}
-              className="bg-white text-card-foreground flex flex-col gap-6 rounded-xl py-6 shadow-sm hover:shadow-lg transition-shadow cursor-pointer"
+              className="bg-white text-card-foreground h-full flex flex-col gap-6 rounded-xl py-6 shadow-sm hover:shadow-lg transition-shadow"
             >
               <div className="grid auto-rows-min items-start gap-1.5 px-6 pb-2">
                 <div className="aspect-video bg-gradient-to-br from-green-400 to-blue-500 rounded-lg mb-3 flex items-center justify-center">
@@ -101,7 +101,7 @@ const MyCourses = () => {
                 </div>
               </div>
 
-              <div className="px-6 space-y-3">
+              <div className="px-6 space-y-3 mt-auto">
                 <div className="bg-primary/20 relative w-full overflow-hidden rounded-full h-2">
                   <div
                     className="bg-primary h-full transition-all"

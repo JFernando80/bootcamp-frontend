@@ -43,14 +43,16 @@ const Sidebar = () => {
     <div className="w-64 bg-blue-600 text-white min-h-screen flex flex-col">
       <div className="p-6">
         <div className="flex items-center space-x-3 mb-8">
-          <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-blue-600">
+          <div className="w-12 h-12 flex-shrink-0 bg-white rounded-full flex items-center justify-center text-blue-600">
             <UserAvatar />
           </div>
-          <div>
-            <h3 className="font-semibold">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold truncate">
               {userName || userEmail || "Usuário"}
             </h3>
-            <p className="text-blue-200 text-sm">{userEmail || "Sem email"}</p>
+            <p className="text-blue-200 text-sm truncate">
+              {userEmail || "Sem email"}
+            </p>
           </div>
         </div>
 

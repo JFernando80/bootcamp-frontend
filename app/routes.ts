@@ -6,6 +6,7 @@ export default [
   route("login", "routes/login/login.tsx"),
   route("register", "routes/register/register.tsx"),
   route("courses", "routes/courses/courses.tsx"),
+  route("courses/:id", "routes/course/Course.tsx"),
   route("courseDetails/:courseId", "routes/courseDetails/courseDetails.tsx"),
   route("createCourse", "routes/createCourse/createCourse.tsx"),
   route("manageCourses", "routes/manageCourses/manageCourses.tsx"),
