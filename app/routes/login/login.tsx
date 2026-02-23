@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-
+import { AlertTriangle } from "lucide-react";
 import { loginUser } from "~/api/authService";
 import { useAuthStore } from "~/stores/authStore";
 
@@ -8,6 +8,15 @@ export default function LoginCard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessionMsg, setSessionMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    const reason = sessionStorage.getItem("auth_redirect_reason");
+    if (reason) {
+      setSessionMsg(reason);
+      sessionStorage.removeItem("auth_redirect_reason");
+    }
+  }, []);
 
   const store = useAuthStore();
 
@@ -72,6 +81,13 @@ export default function LoginCard() {
             Acesse seus cursos e certificados
           </p>
         </div>
+
+        {sessionMsg && (
+          <div className="flex items-start gap-3 bg-yellow-50 border border-yellow-300 text-yellow-800 rounded-lg px-4 py-3 text-sm">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+            <span>{sessionMsg}</span>
+          </div>
+        )}
 
         <div className="bg-white text-card-foreground flex flex-col gap-6 rounded-2xl py-6 shadow-md border border-gray-200">
           <div className="p-6">

@@ -1,12 +1,19 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { PlayCircle, Award } from "lucide-react";
-import { userCourseService, courseService } from "~/api/services";
+import {
+  userCourseService,
+  courseService,
+  userActivityService,
+  moduleService,
+  activityService,
+} from "~/api/services";
 import { useAuthStore } from "~/stores/authStore";
 import type { UserCourseDTO, CourseDTO } from "~/api/types";
 
 interface CourseWithDetails extends UserCourseDTO {
   courseDetails?: CourseDTO;
+  localProgressPercent: number;
 }
 
 const MyCourses = () => {
@@ -39,45 +46,63 @@ const MyCourses = () => {
 
         const userCourses = response.body.lista;
 
-        // Buscar detalhes de cada curso
+        // Carregar todas as atividades do usuário de uma vez
+        const uaResp = await userActivityService.list(1, [
+          { key: "id", operation: "EQUAL", value: userId, classes: "user" },
+        ]);
+        const uaMap: Record<string, string> = {};
+        (uaResp.body?.lista ?? []).forEach((ua) => {
+          if (ua.activityId) uaMap[ua.activityId] = ua.status || "";
+        });
+
+        // Buscar detalhes de cada curso + calcular progresso local
         const coursesWithDetails: CourseWithDetails[] = await Promise.all(
           userCourses.map(async (userCourse) => {
+            let courseDetails: CourseDTO | undefined;
             try {
-              // Buscar o curso pelo ID ou slug
-              const courseResponse = await courseService.list(1, [
+              const r = await courseService.list(1, [
+                { key: "id", operation: "EQUAL", value: userCourse.courseId },
+              ]);
+              courseDetails = r.body?.lista?.[0];
+            } catch (_) {}
+
+            // Calcular progresso local contando atividades concluídas
+            let localProgressPercent = 0;
+            try {
+              const modResp = await moduleService.list(1, [
                 {
                   key: "id",
                   operation: "EQUAL",
-                  value: userCourse.courseId,
+                  value: courseDetails?.id || userCourse.courseId,
+                  classes: "course",
                 },
               ]);
+              const mods = modResp.body?.lista ?? [];
+              let total = 0;
+              let done = 0;
+              for (const mod of mods) {
+                const actResp = await activityService.list(1, [
+                  {
+                    key: "id",
+                    operation: "EQUAL",
+                    value: mod.id!,
+                    classes: "module",
+                  },
+                ]);
+                const acts = actResp.body?.lista ?? [];
+                total += acts.length;
+                done += acts.filter(
+                  (a) => uaMap[a.id!] === "FINALIZADO",
+                ).length;
+              }
+              if (total > 0)
+                localProgressPercent = Math.round((done / total) * 100);
+            } catch (_) {}
 
-              console.log(
-                `📖 Detalhes do curso ${userCourse.courseId}:`,
-                courseResponse,
-              );
-
-              const courseDetails =
-                courseResponse.body?.lista?.[0] || undefined;
-
-              return {
-                ...userCourse,
-                courseDetails,
-              };
-            } catch (err) {
-              console.error(
-                `Erro ao buscar detalhes do curso ${userCourse.courseId}:`,
-                err,
-              );
-              return {
-                ...userCourse,
-                courseDetails: undefined,
-              };
-            }
+            return { ...userCourse, courseDetails, localProgressPercent };
           }),
         );
 
-        console.log("✅ Cursos com detalhes:", coursesWithDetails);
         setCourses(coursesWithDetails);
       } catch (err) {
         console.error("Erro ao carregar cursos do usuário:", err);
@@ -187,14 +212,14 @@ const MyCourses = () => {
                   <div
                     className="bg-green-600 h-full transition-all"
                     style={{
-                      width: `${userCourse.progressPercent || 0}%`,
+                      width: `${userCourse.localProgressPercent}%`,
                     }}
                   ></div>
                 </div>
                 <p className="text-sm text-gray-600">
-                  {userCourse.progressPercent || 0}% concluído
+                  {userCourse.localProgressPercent}% concluído
                 </p>
-                {userCourse.status === "FINALIZADO" && (
+                {userCourse.localProgressPercent === 100 && (
                   <span className="inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800">
                     Certificado disponível
                   </span>

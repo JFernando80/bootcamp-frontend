@@ -106,7 +106,13 @@ httpClient.interceptors.response.use(
       if (!refreshToken) {
         // No refresh token available -> logout
         if (logout) logout();
-        if (typeof window !== "undefined") window.location.replace("/login");
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem(
+            "auth_redirect_reason",
+            "Sua sessão expirou. Por favor, faça login novamente.",
+          );
+          window.location.replace("/login");
+        }
         return Promise.reject(error);
       }
 
@@ -130,7 +136,13 @@ httpClient.interceptors.response.use(
           console.error("❌ Refresh token failed:", refreshErr);
           // Refresh failed -> logout
           if (logout) logout();
-          if (typeof window !== "undefined") window.location.replace("/login");
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem(
+              "auth_redirect_reason",
+              "Sua sessão expirou. Por favor, faça login novamente.",
+            );
+            window.location.replace("/login");
+          }
           return Promise.reject(refreshErr);
         }
       }

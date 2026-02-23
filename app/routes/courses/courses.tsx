@@ -1,43 +1,23 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
-import { Search, Filter, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { courseService } from "~/api/services";
-import type { CourseDTO, SearchCriteriaDTO, FilterField } from "~/api/types";
+import type { CourseDTO, SearchCriteriaDTO } from "~/api/types";
 import { Card } from "~/routes/home/components/Card";
 import { CourseSkeletonGrid } from "~/components/CourseCardSkeleton";
-import { useNotification } from "~/components/NotificationProvider";
 
 export default function Courses() {
-  const { notify } = useNotification();
   const [courses, setCourses] = useState<CourseDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [showFilters, setShowFilters] = useState(false);
-  const [availableFields, setAvailableFields] = useState<FilterField[]>([]);
   const [filters, setFilters] = useState<SearchCriteriaDTO[]>([]);
-
-  useEffect(() => {
-    loadAvailableFields();
-  }, []);
 
   useEffect(() => {
     loadCourses();
   }, [currentPage, filters]);
-
-  const loadAvailableFields = async () => {
-    try {
-      const response = await courseService.getFields();
-      console.log("Campos carregados:", response);
-      if (response.statusCode === 200 && response.body) {
-        setAvailableFields(response.body);
-      }
-    } catch (err) {
-      console.error("Erro ao carregar campos de filtro:", err);
-    }
-  };
 
   const loadCourses = async () => {
     try {
@@ -70,48 +50,16 @@ export default function Courses() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchTerm.trim()) {
-      const searchFilter: SearchCriteriaDTO = {
-        key: "title",
-        operation: "MATCH",
-        value: searchTerm,
-      };
-      setFilters([searchFilter]);
-      setCurrentPage(1);
+      setFilters([{ key: "title", operation: "MATCH", value: searchTerm }]);
     } else {
       setFilters([]);
-      setCurrentPage(1);
     }
-  };
-
-  const handleAddFilter = (field: string, value: string) => {
-    if (!value.trim() || !field) {
-      console.error("Tentativa de adicionar filtro inválido:", {
-        field,
-        value,
-      });
-      return;
-    }
-
-    const newFilter: SearchCriteriaDTO = {
-      key: field,
-      operation: "MATCH", // Sempre usar "contém"
-      value: value,
-    };
-
-    console.log("Adicionando filtro:", newFilter);
-    setFilters([...filters, newFilter]);
     setCurrentPage(1);
   };
 
-  const handleRemoveFilter = (index: number) => {
-    const newFilters = filters.filter((_, i) => i !== index);
-    setFilters(newFilters);
-    setCurrentPage(1);
-  };
-
-  const clearFilters = () => {
-    setFilters([]);
+  const clearSearch = () => {
     setSearchTerm("");
+    setFilters([]);
     setCurrentPage(1);
   };
 
@@ -128,11 +76,10 @@ export default function Courses() {
         </div>
       </div>
 
-      {/* Search and Filters */}
+      {/* Search */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8">
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          {/* Search Bar */}
-          <form onSubmit={handleSearch} className="flex gap-3 mb-4">
+          <form onSubmit={handleSearch} className="flex gap-3">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
@@ -140,8 +87,17 @@ export default function Courses() {
                 placeholder="Buscar cursos por título..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
             <button
               type="submit"
@@ -150,171 +106,7 @@ export default function Courses() {
               <Search className="w-5 h-5" />
               Buscar
             </button>
-            <button
-              type="button"
-              onClick={() => setShowFilters(!showFilters)}
-              className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition flex items-center gap-2"
-            >
-              <Filter className="w-5 h-5" />
-              Filtros
-            </button>
           </form>
-
-          {/* Active Filters */}
-          {filters.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              <span className="text-sm text-gray-600">Filtros ativos:</span>
-              {filters.map((filter, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                >
-                  <span>
-                    {availableFields.find((f) => f.key === filter.key)?.label ||
-                      filter.key}
-                    {": "}
-                    {filter.value}
-                  </span>
-                  <button
-                    onClick={() => handleRemoveFilter(index)}
-                    className="hover:text-blue-600"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-              <button
-                onClick={clearFilters}
-                className="text-sm text-red-600 hover:text-red-800 underline"
-              >
-                Limpar todos
-              </button>
-            </div>
-          )}
-
-          {/* Advanced Filters Panel */}
-          {showFilters && (
-            <div className="border-t pt-4">
-              <h3 className="font-semibold mb-3">Filtros Avançados</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Os filtros buscam por valores que <strong>contenham</strong> o
-                texto digitado
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Campo
-                  </label>
-                  <select
-                    id="filterField"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Selecione um campo</option>
-                    {availableFields.map((field) => (
-                      <option key={field.id} value={field.key}>
-                        {field.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Valor
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      id="filterValue"
-                      placeholder="Digite o valor"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          const field = (
-                            document.getElementById(
-                              "filterField",
-                            ) as HTMLSelectElement
-                          ).value;
-                          const value = (
-                            document.getElementById(
-                              "filterValue",
-                            ) as HTMLInputElement
-                          ).value;
-
-                          if (!field || field === "") {
-                            notify({
-                              type: "info",
-                              message:
-                                "Por favor, selecione um campo para filtrar.",
-                            });
-                            return;
-                          }
-
-                          if (!value || value.trim() === "") {
-                            notify({
-                              type: "info",
-                              message:
-                                "Por favor, digite um valor para o filtro.",
-                            });
-                            return;
-                          }
-
-                          handleAddFilter(field, value);
-                          (
-                            document.getElementById(
-                              "filterValue",
-                            ) as HTMLInputElement
-                          ).value = "";
-                        }
-                      }}
-                    />
-                    <button
-                      onClick={() => {
-                        const field = (
-                          document.getElementById(
-                            "filterField",
-                          ) as HTMLSelectElement
-                        ).value;
-                        const value = (
-                          document.getElementById(
-                            "filterValue",
-                          ) as HTMLInputElement
-                        ).value;
-
-                        if (!field || field === "") {
-                          notify({
-                            type: "info",
-                            message:
-                              "Por favor, selecione um campo para filtrar.",
-                          });
-                          return;
-                        }
-
-                        if (!value || value.trim() === "") {
-                          notify({
-                            type: "info",
-                            message:
-                              "Por favor, digite um valor para o filtro.",
-                          });
-                          return;
-                        }
-
-                        handleAddFilter(field, value);
-                        (
-                          document.getElementById(
-                            "filterValue",
-                          ) as HTMLInputElement
-                        ).value = "";
-                      }}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-                    >
-                      Adicionar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 

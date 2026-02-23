@@ -28,7 +28,6 @@ import {
   useActivitiesForModules,
   useUserProgressQuery,
   useToggleActivityMutation,
-  useToggleModuleMutation,
 } from "~/api/hooks";
 import { useNotification } from "~/components/NotificationProvider";
 import { useAuthStore } from "~/stores/authStore";
@@ -38,7 +37,6 @@ import type {
   ActivityDTO,
   UserCourseDTO,
   UserActivityDTO,
-  UserModuleDTO,
 } from "~/api/types";
 import Video from "../course/components/Video";
 
@@ -49,7 +47,6 @@ export default function CourseDetails() {
   const [processingActivity, setProcessingActivity] = useState<string | null>(
     null,
   );
-  const [processingModule, setProcessingModule] = useState<string | null>(null);
   const [course, setCourse] = useState<CourseDTO | null>(null);
   const [userCourse, setUserCourse] = useState<UserCourseDTO | null>(null);
   const [modules, setModules] = useState<ModuleDTO[]>([]);
@@ -59,9 +56,6 @@ export default function CourseDetails() {
   const [userActivities, setUserActivities] = useState<
     Record<string, UserActivityDTO>
   >({});
-  const [userModules, setUserModules] = useState<Record<string, UserModuleDTO>>(
-    {},
-  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(
@@ -104,20 +98,24 @@ export default function CourseDetails() {
     .map((a) => a.id!)
     .filter(Boolean);
   const userProgressQuery = useUserProgressQuery(
-    userId,
+    userId ?? undefined,
     moduleIds,
     activityIds,
   );
   useEffect(() => {
     if (userProgressQuery.data) {
       setUserActivities(userProgressQuery.data.userActivities || {});
-      setUserModules(userProgressQuery.data.userModules || {});
     }
   }, [userProgressQuery.data]);
 
   const toggleActivity = useToggleActivityMutation();
-  const toggleModule = useToggleModuleMutation();
   const { notify } = useNotification();
+
+  // True while progress data is being fetched — used to suppress the visual flash
+  // where activities appear without completion status before userProgressQuery resolves
+  const progressLoading =
+    activityIds.length > 0 &&
+    (userProgressQuery.isLoading || userProgressQuery.isFetching);
 
   useEffect(() => {
     loadCourseData();
@@ -169,67 +167,6 @@ export default function CourseDetails() {
     }
   }
 
-  async function loadUserProgress(
-    moduleIdsParam?: string[],
-    activityIdsParam?: string[],
-  ) {
-    if (!userId) return;
-
-    try {
-      // IDs dos módulos e atividades do curso (usando params quando fornecidos)
-      const moduleIds = moduleIdsParam ?? modules.map((m) => m.id!);
-      const activityIds =
-        activityIdsParam ??
-        Object.values(activities)
-          .flat()
-          .map((a) => a.id!);
-
-      // Buscar atividades do usuário
-      const activitiesResponse = await userActivityService.list(1, [
-        { key: "id", operation: "EQUAL", value: userId, classes: "user" },
-      ]);
-      const userActivitiesList = activitiesResponse.body?.lista || [];
-
-      // Filtrar apenas as atividades do curso atual
-      const userActivitiesMap: Record<string, UserActivityDTO> = {};
-      userActivitiesList.forEach((ua) => {
-        if (ua.activityId && activityIds.includes(ua.activityId)) {
-          userActivitiesMap[ua.activityId] = ua;
-        }
-      });
-      setUserActivities(userActivitiesMap);
-
-      console.log("📊 Atividades carregadas:", {
-        total: userActivitiesList.length,
-        doCurso: Object.keys(userActivitiesMap).length,
-        activityIds,
-      });
-
-      // Buscar módulos do usuário
-      const modulesResponse = await userModuleService.list(1, [
-        { key: "id", operation: "EQUAL", value: userId, classes: "user" },
-      ]);
-      const userModulesList = modulesResponse.body?.lista || [];
-
-      // Filtrar apenas os módulos do curso atual
-      const userModulesMap: Record<string, UserModuleDTO> = {};
-      userModulesList.forEach((um) => {
-        if (um.moduleId && moduleIds.includes(um.moduleId)) {
-          userModulesMap[um.moduleId] = um;
-        }
-      });
-      setUserModules(userModulesMap);
-
-      console.log("📚 Módulos carregados:", {
-        total: userModulesList.length,
-        doCurso: Object.keys(userModulesMap).length,
-        moduleIds,
-      });
-    } catch (err) {
-      console.error("Erro ao carregar progresso:", err);
-    }
-  }
-
   async function handleToggleActivity(
     activityId: string,
     moduleId?: string,
@@ -273,37 +210,6 @@ export default function CourseDetails() {
         },
         onSettled: () => {
           setProcessingActivity(null);
-          userProgressQuery.refetch?.();
-        },
-      },
-    );
-  }
-
-  function handleToggleModule(moduleId: string) {
-    if (!userId) return;
-    const moduleObj = modules.find((m) => m.id === moduleId);
-    const existing = userModules[moduleId];
-    const successMessage = "Módulo marcado como concluído";
-
-    setProcessingModule(moduleId);
-    toggleModule.mutate(
-      { userId: userId!, moduleId, moduleObj, existing },
-      {
-        onSuccess: () => {
-          notify({ type: "success", message: successMessage });
-        },
-        onError: (err: any) => {
-          console.error("toggleModule error", err);
-          notify({
-            type: "error",
-            message:
-              err?.response?.body?.message ||
-              err?.message ||
-              "Erro ao atualizar módulo.",
-          });
-        },
-        onSettled: () => {
-          setProcessingModule(null);
           userProgressQuery.refetch?.();
         },
       },
@@ -369,26 +275,54 @@ export default function CourseDetails() {
   const selectedUserActivity = selectedActivityId
     ? userActivities[selectedActivityId]
     : undefined;
-  const isSelectedCompleted = selectedUserActivity?.status === "FINALIZADO";
-  const isSelectedProcessing = processingActivity === selectedActivityId;
+  // While progress is still loading, don't render as "not completed" — wait for real data
+  const isSelectedCompleted =
+    !progressLoading && selectedUserActivity?.status === "FINALIZADO";
+  const isSelectedProcessing =
+    processingActivity === selectedActivityId || progressLoading;
+
+  // Compute progress locally so it updates immediately after each activity toggle
+  const localProgressPercent =
+    activityIds.length > 0 && !progressLoading
+      ? Math.round(
+          (activityIds.filter(
+            (id) => userActivities[id]?.status === "FINALIZADO",
+          ).length /
+            activityIds.length) *
+            100,
+        )
+      : (userCourse?.progressPercent ?? 0);
+  const isCourseCompleted =
+    !progressLoading && activityIds.length > 0 && localProgressPercent === 100;
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-2">
+        <div className="mb-8">
           <Link
             to="/myArea"
-            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition"
+            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition"
           >
             <ArrowLeft className="h-5 w-5" />
             Voltar para Minha Área
           </Link>
+
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-br from-green-400 to-blue-500 p-3 rounded-lg flex-shrink-0">
+              <BookOpen className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                {course?.title || "Carregando..."}
+              </h1>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Conteúdo Principal */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Coluna Principal - Conteúdo da Atividade Selecionada */}
           <div className="lg:col-span-2 space-y-6">
@@ -710,17 +644,25 @@ export default function CourseDetails() {
                   <span className="text-sm font-medium text-gray-700">
                     Conclusão do curso
                   </span>
-                  <span className="text-sm font-bold text-blue-600">
-                    {userCourse.progressPercent || 0}%
-                  </span>
+                  {progressLoading ? (
+                    <div className="h-4 w-10 rounded bg-gray-200 animate-pulse" />
+                  ) : (
+                    <span className="text-sm font-bold text-blue-600">
+                      {localProgressPercent}%
+                    </span>
+                  )}
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3">
                   <div
-                    className="bg-blue-600 h-3 rounded-full transition-all"
-                    style={{ width: `${userCourse.progressPercent || 0}%` }}
+                    className="bg-blue-600 h-3 rounded-full transition-all duration-500"
+                    style={{
+                      width: progressLoading
+                        ? `${userCourse.progressPercent ?? 0}%`
+                        : `${localProgressPercent}%`,
+                    }}
                   ></div>
                 </div>
-                {userCourse.status === "FINALIZADO" && (
+                {isCourseCompleted && (
                   <div className="mt-4 flex items-center gap-2 text-green-600 font-medium">
                     <CheckCircle className="h-5 w-5" />
                     Curso concluído! Parabéns!
@@ -748,7 +690,6 @@ export default function CourseDetails() {
               </h2>
               <div className="space-y-4">
                 {modules.map((module) => {
-                  const userModule = userModules[module.id!];
                   const moduleActivities = activities[module.id!] || [];
 
                   return (
@@ -821,7 +762,9 @@ export default function CourseDetails() {
                                   {getActivityLabel(activity.type || "")}{" "}
                                   {moduleActivities.length > 1 ? idx + 1 : ""}
                                 </span>
-                                {isCompleted ? (
+                                {progressLoading ? (
+                                  <div className="h-4 w-4 rounded-full bg-gray-200 animate-pulse flex-shrink-0" />
+                                ) : isCompleted ? (
                                   <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
                                 ) : (
                                   <Circle className="h-4 w-4 text-gray-300 flex-shrink-0" />
@@ -831,29 +774,6 @@ export default function CourseDetails() {
                           })}
                         </div>
                       )}
-
-                      {/* Module complete button */}
-                      <div className="pt-2 border-t border-gray-100">
-                        {userModule?.status === "COMPLETED" ? (
-                          <div className="inline-flex items-center gap-2 text-green-600 font-medium text-sm">
-                            <CheckCircle className="h-4 w-4" />
-                            Módulo concluído
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => handleToggleModule(module.id!)}
-                            disabled={processingModule === module.id}
-                            className="text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 py-1.5 px-3 rounded-lg disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed transition"
-                          >
-                            {processingModule === module.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                            )}
-                            Marcar módulo como concluído
-                          </button>
-                        )}
-                      </div>
                     </div>
                   );
                 })}

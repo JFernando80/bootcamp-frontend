@@ -20,9 +20,14 @@ interface AuthContextValue {
   isAdmin: boolean;
   login: (
     token: string | null,
-    sessionId: number,
-    publicKey: string,
+    sessionId: number | null,
+    publicKey: string | null,
+    userName?: string,
+    userEmail?: string,
+    isAdmin?: boolean,
+    refreshToken?: string,
     ttlMinutes?: number,
+    userId?: string,
   ) => void;
   logout: () => void;
   ready: boolean;
@@ -105,6 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         token: initial.token,
         sessionId: initial.sessionId,
         publicKey: initial.publicKey,
+        expiresAt: initial.sessionExpiry,
         isAdmin: initial.isAdmin,
         login,
         logout,
@@ -142,70 +148,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     initial.isAdmin,
   ]);
 
-  useEffect(() => {
-    if (!value.expiresAt) return;
-    const remaining = value.expiresAt - Date.now();
-    if (remaining <= 0) {
-      logout();
-      return;
-    }
-    const id = setTimeout(() => logout(), remaining);
-    return () => clearTimeout(id);
-  }, [value.expiresAt, logout]);
-
   // Refresh quando o token estiver perto de expirar
   const isRefreshing = useRef(false);
   const notifyCtx = useNotification();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!value.expiresAt) return;
+  // Attempt a proactive token refresh.
+  // Called on a timer AND whenever the tab regains focus.
+  const attemptRefresh = useRef(async () => {
+    if (isRefreshing.current) return;
 
-    const remaining = value.expiresAt - Date.now();
-    const refreshThreshold = 2 * 60_000; // 2 minutes
+    const store = useAuthStore.getState();
+    if (!store.isAuthenticated || !store.refreshToken) return;
 
-    async function attemptRefresh() {
-      if (isRefreshing.current) return;
-      isRefreshing.current = true;
-      try {
-        const store = useAuthStore.getState();
-        if (!store.refreshToken) {
-          isRefreshing.current = false;
-          return;
-        }
-        const resp = await refreshTokenRequest(store.refreshToken);
-        if (!resp || resp.statusCode !== 200) {
-          notifyCtx.notify({ type: "error", message: "Sessão expirada" });
-          useAuthStore.getState().logout();
-          navigate("/login");
-        }
-      } catch (err) {
-        notifyCtx.notify({ type: "error", message: "Sessão expirada" });
-        useAuthStore.getState().logout();
-        navigate("/login");
-      } finally {
-        isRefreshing.current = false;
-      }
-    }
+    // Only refresh if within 5 minutes of expiry (or already past it)
+    const remaining = (store.sessionExpiry ?? 0) - Date.now();
+    if (remaining > 5 * 60_000) return;
 
-    if (remaining <= 0) {
-      notifyCtx.notify({ type: "error", message: "Sessão expirada" });
-      logout();
+    isRefreshing.current = true;
+    try {
+      const resp = await refreshTokenRequest(store.refreshToken);
+      if (!resp || resp.statusCode !== 200) throw new Error("Refresh failed");
+      // store is updated inside refreshTokenRequest on success
+    } catch {
+      notifyCtx.notify({
+        type: "error",
+        message: "Sua sessão expirou. Faça login novamente.",
+      });
+      sessionStorage.setItem(
+        "auth_redirect_reason",
+        "Sua sessão expirou. Por favor, faça login novamente.",
+      );
+      useAuthStore.getState().logout();
       navigate("/login");
-      return;
+    } finally {
+      isRefreshing.current = false;
     }
+  });
 
-    if (remaining <= refreshThreshold) {
-      attemptRefresh();
-      return;
-    }
+  useEffect(() => {
+    if (!isAuthenticated) return;
 
-    const timeoutId = setTimeout(
-      () => attemptRefresh(),
-      remaining - refreshThreshold,
-    );
-    return () => clearTimeout(timeoutId);
-  }, [value.expiresAt, logout, notifyCtx, navigate]);
+    // Check every 2 minutes; will only actually refresh when within 5 min of expiry
+    const interval = setInterval(() => attemptRefresh.current(), 2 * 60_000);
+
+    // Also check immediately when tab regains focus (covers browser sleep)
+    const onVisible = () => {
+      if (document.visibilityState === "visible") attemptRefresh.current();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    // Run once on mount in case the token is already near expiry
+    attemptRefresh.current();
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [isAuthenticated]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

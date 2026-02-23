@@ -417,9 +417,19 @@ export default function Course() {
 
                 <div className="space-y-4">
                   {modules.map((module, index) => {
-                    const userModule = userModules[module.id!];
-                    const moduleProgress = userModule?.progressPercent || 0;
-                    const moduleStatus = userModule?.status;
+                    const moduleActivities = activities[module.id!] || [];
+                    const completedCount = moduleActivities.filter(
+                      (a) => userActivities[a.id!]?.status === "FINALIZADO",
+                    ).length;
+                    const moduleProgress =
+                      moduleActivities.length > 0
+                        ? Math.round(
+                            (completedCount / moduleActivities.length) * 100,
+                          )
+                        : 0;
+                    const isModuleCompleted =
+                      moduleActivities.length > 0 &&
+                      completedCount === moduleActivities.length;
 
                     return (
                       <div
@@ -439,7 +449,7 @@ export default function Course() {
                               Obrigatório
                             </span>
                           )}
-                          {moduleStatus === "FINALIZADO" && (
+                          {isAuthenticated && isModuleCompleted && (
                             <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
                               <CheckCircle className="h-3 w-3" />
                               Concluído
@@ -448,7 +458,7 @@ export default function Course() {
                         </div>
 
                         {/* Barra de progresso do módulo */}
-                        {isAuthenticated && userModule && (
+                        {isAuthenticated && moduleActivities.length > 0 && (
                           <div className="mb-3">
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-xs text-gray-600">
