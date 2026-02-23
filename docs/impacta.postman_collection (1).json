@@ -1,0 +1,656 @@
+{
+	"info": {
+		"_postman_id": "75210d90-a6a7-416c-a006-48c5b2ee8578",
+		"name": "impacta",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "9055285"
+	},
+	"item": [
+		{
+			"name": "login",
+			"item": [
+				{
+					"name": "segurança",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseData = pm.response.json();",
+									"",
+									"pm.environment.set(\"token_security\", responseData.body.publicKey);",
+									"",
+									"pm.environment.set(\"id_security\", responseData.body.id);",
+									"",
+									"// Este comando imprime o valor no console do Postman",
+									"console.log(\"O valor da variável é:\", pm.environment.get(\"id_security\"));"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "teste",
+								"value": "ola",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{url}}security/cadastro",
+							"host": [
+								"{{url}}security"
+							],
+							"path": [
+								"cadastro"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "logar no sistema",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "token",
+								"value": "{{id_security}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"login\": \"U2FsdGVkX19eFIOEMdkuBdnKnQuQpl5/osg29mEPMpYLiDCupsUnsA2BGtwIgW7jG9GOzjDYQoCZ107ZrekFgQ==\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}user/login",
+							"host": [
+								"{{url}}user"
+							],
+							"path": [
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "criar_usuario",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "token",
+								"value": "{{id_security}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"deivid\",\n    \"email\": \"deividvenancio@gmail.com\",\n    \"sobrenome\": \"ferreira venancio\",\n    \"passwordHash\": \"U2FsdGVkX19NfYegQWc/mJehnaW2DSDiGzFVxRrKyD0=\",\n    \"administrador\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}user/new",
+							"host": [
+								"{{url}}user"
+							],
+							"path": [
+								"new"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "refresh_token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseData = pm.response.json();",
+									"",
+									"pm.environment.set(\"token\", responseData.body.tokenDTO.token);",
+									"pm.environment.set(\"refresh_token\", responseData.body.tokenDTO.refreshToken);"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.sendRequest(\"http://localhost:8030/bootcamp/security/cadastro\", function (err, response) {",
+									"    if (err) {",
+									"        console.log(err);",
+									"    } else {",
+									"        pm.environment.set(\"token_security\", response.json().body.publicKey);",
+									"        pm.environment.set(\"id_security\", response.json().body.id);",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "token",
+								"value": "{{id_security}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refreshToken\": \"4893e8c6fdb0cd0ae8b85a259fa428ed7f4d1d199c3f1a8f5910bb05cad1a20d\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}user/refresh_token",
+							"host": [
+								"{{url}}user"
+							],
+							"path": [
+								"refresh_token"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "parte cursos",
+			"item": [
+				{
+					"name": "get curso Colunas",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "authorization",
+								"value": "{{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}course/consulta",
+							"host": [
+								"{{url}}course"
+							],
+							"path": [
+								"consulta"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "criar curso",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "authorization",
+								"value": "{{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"slug\": \"aaa\",\n    \"title\": \"Curso de AWS\",\n    \"description\": \"aaaaaaaaaa\",\n    \"createdAtS\": \"09/02/2026\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}course",
+							"host": [
+								"{{url}}course"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get curso",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "authorization",
+								"value": "{{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}course/filtro/1",
+							"host": [
+								"{{url}}course"
+							],
+							"path": [
+								"filtro",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "criar modulo",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "authorization",
+								"value": "{{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"index\": 2,\n    \"title\": \"Segurança na aws\",\n    \"description\": \"Conheça o que a AWS fornece de segurança\",\n    \"requiredToCompleteCourse\": true,\n    \"createdAtS\": \"06/02/2026\",\n    \"courseId\": \"b8b0ca27-5ad1-4158-904d-a5b91f90c537\",\n    \"courseDescription\": \"Curso de AWS 1\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}module",
+							"host": [
+								"{{url}}module"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get modulo",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "authorization",
+								"value": "{{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"key\": \"index\",\n        \"operation\": \"EQUAL\",\n        \"value\": 2\n    }\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}module/filtro/1",
+							"host": [
+								"{{url}}module"
+							],
+							"path": [
+								"filtro",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "editar modulo",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "authorization",
+								"value": "{{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"index\": 2,\n    \"title\": \"Segurança na aws\",\n    \"description\": \"Conheça o que a AWS fornece de segurança 11\",\n    \"requiredToCompleteCourse\": true,\n    \"createdAtS\": \"06/02/2026\",\n    \"courseId\": \"b8b0ca27-5ad1-4158-904d-a5b91f90c537\",\n    \"courseDescription\": \"Curso de AWS 1\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}module/7834f330-62e5-4e84-bd00-1e9f308214f4",
+							"host": [
+								"{{url}}module"
+							],
+							"path": [
+								"7834f330-62e5-4e84-bd00-1e9f308214f4"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "criar Atividade",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "authorization",
+								"value": "{{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"Aws HUB security\",\n    \"configJson\": \"aa\",\n    \"maxScore\": 1,\n    \"passingScore\": 1,\n    \"createdAtS\": \"09/02/2026\",\n    \"updatedAtS\": \"09/02/2026\",\n    \"moduleId\": \"7834f330-62e5-4e84-bd00-1e9f308214f4\",\n    \"moduleDescription\": \"Conheça o que a AWS fornece de segurança 11\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}activity",
+							"host": [
+								"{{url}}activity"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get atividade",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "authorization",
+								"value": "{{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"key\": \"id\",\n        \"operation\": \"EQUAL\",\n        \"value\": \"7834f330-62e5-4e84-bd00-1e9f308214f4\",\n        \"classes\": \"module\"\n    }\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}activity/filtro/1",
+							"host": [
+								"{{url}}activity"
+							],
+							"path": [
+								"filtro",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "editar curso",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "authorization",
+								"value": "{{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"slug\": \"aaa\",\n    \"title\": \"Curso de AWS 1\",\n    \"description\": \"aaaaaaaaaa\",\n    \"createdAtS\": \"09/02/2026\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}course/b8b0ca27-5ad1-4158-904d-a5b91f90c537",
+							"host": [
+								"{{url}}course"
+							],
+							"path": [
+								"b8b0ca27-5ad1-4158-904d-a5b91f90c537"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "parte usuario curso",
+			"item": [
+				{
+					"name": "criar curso usuario",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "authorization",
+								"value": "{{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userId\": \"5dbbf9a8-ea67-4c31-9047-5c872b1f939d\",\n    \"userName\": \"deivid\",\n    \"courseId\": \"b8b0ca27-5ad1-4158-904d-a5b91f90c537\",\n    \"courseDescription\": \"Teste teste teste Teste teste teste\",\n    \"progressPercent\": 0\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}user_course",
+							"host": [
+								"{{url}}user_course"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get curso usuario",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "authorization",
+								"value": "{{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"key\": \"id\",\n        \"value\": \"5dbbf9a8-ea67-4c31-9047-5c872b1f939d\",\n        \"operation\": \"EQUAL\",\n        \"classes\": \"user\"\n    }\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}user_course/filtro/1",
+							"host": [
+								"{{url}}user_course"
+							],
+							"path": [
+								"filtro",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get usuario module",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "authorization",
+								"value": "{{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"key\": \"id\",\n        \"value\": \"5dbbf9a8-ea67-4c31-9047-5c872b1f939d\",\n        \"operation\": \"EQUAL\",\n        \"classes\": \"user\"\n    }\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}user_module/filtro/1",
+							"host": [
+								"{{url}}user_module"
+							],
+							"path": [
+								"filtro",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get usuario activity",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "authorization",
+								"value": "{{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"key\": \"id\",\n        \"value\": \"5dbbf9a8-ea67-4c31-9047-5c872b1f939d\",\n        \"operation\": \"EQUAL\",\n        \"classes\": \"user\"\n    }\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}user_activity/filtro/1",
+							"host": [
+								"{{url}}user_activity"
+							],
+							"path": [
+								"filtro",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "put user activity",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "authorization",
+								"value": "{{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"attemptNumber\": null,\n    \"answerJson\": null,\n    \"score\": 0,\n    \"submittedAtS\": null,\n    \"status\": \"FINALIZADO\",\n    \"userId\": \"5dbbf9a8-ea67-4c31-9047-5c872b1f939d\",\n    \"userName\": \"deivid\",\n    \"activityId\": \"511d9343-7a9d-49f7-9501-3503eb91c6c8\",\n    \"activityType\": \"Aws HUB security\",\n    \"moduleId\": \"7834f330-62e5-4e84-bd00-1e9f308214f4\",\n    \"moduleDescription\": \"Conheça o que a AWS fornece de segurança 11\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}user_activity/c19dceeb-997e-47a4-b079-2f813623c0d6",
+							"host": [
+								"{{url}}user_activity"
+							],
+							"path": [
+								"c19dceeb-997e-47a4-b079-2f813623c0d6"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

@@ -4,8 +4,12 @@ import React, {
   useEffect,
   useState,
   useMemo,
+  useRef,
 } from "react";
 import { useAuthStore } from "~/stores/authStore";
+import { refreshToken as refreshTokenRequest } from "~/api/authService";
+import { useNotification } from "~/components/NotificationProvider";
+import { useNavigate } from "react-router";
 
 interface AuthContextValue {
   isAuthenticated: boolean;
@@ -148,6 +152,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const id = setTimeout(() => logout(), remaining);
     return () => clearTimeout(id);
   }, [value.expiresAt, logout]);
+
+  // Refresh quando o token estiver perto de expirar
+  const isRefreshing = useRef(false);
+  const notifyCtx = useNotification();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!value.expiresAt) return;
+
+    const remaining = value.expiresAt - Date.now();
+    const refreshThreshold = 2 * 60_000; // 2 minutes
+
+    async function attemptRefresh() {
+      if (isRefreshing.current) return;
+      isRefreshing.current = true;
+      try {
+        const store = useAuthStore.getState();
+        if (!store.refreshToken) {
+          isRefreshing.current = false;
+          return;
+        }
+        const resp = await refreshTokenRequest(store.refreshToken);
+        if (!resp || resp.statusCode !== 200) {
+          notifyCtx.notify({ type: "error", message: "Sessão expirada" });
+          useAuthStore.getState().logout();
+          navigate("/login");
+        }
+      } catch (err) {
+        notifyCtx.notify({ type: "error", message: "Sessão expirada" });
+        useAuthStore.getState().logout();
+        navigate("/login");
+      } finally {
+        isRefreshing.current = false;
+      }
+    }
+
+    if (remaining <= 0) {
+      notifyCtx.notify({ type: "error", message: "Sessão expirada" });
+      logout();
+      navigate("/login");
+      return;
+    }
+
+    if (remaining <= refreshThreshold) {
+      attemptRefresh();
+      return;
+    }
+
+    const timeoutId = setTimeout(
+      () => attemptRefresh(),
+      remaining - refreshThreshold,
+    );
+    return () => clearTimeout(timeoutId);
+  }, [value.expiresAt, logout, notifyCtx, navigate]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

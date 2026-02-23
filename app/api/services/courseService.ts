@@ -1,12 +1,78 @@
-import { apiGet, apiPost, apiPut, apiDelete } from "../httpClient";
+import {
+  apiGet,
+  apiPost,
+  apiPut,
+  apiDelete,
+  apiPublicGet,
+} from "../httpClient";
 import type {
   JsonResponse,
   PaginatedResponse,
   SearchCriteriaDTO,
   CourseDTO,
+  FilterField,
 } from "../types";
 
 const BASE_PATH = "/bootcamp/course";
+
+/**
+ * Campos sensíveis ou irrelevantes que devem ser removidos dos filtros
+ */
+const BLOCKED_FIELDS = [
+  "passwordHash",
+  "salt",
+  "createdAt",
+  "updatedAt",
+  "deletedAt",
+  "administrador",
+  "ownerUser.id", // UUID não é útil para usuário final
+];
+
+/**
+ * Mapeamento de campos técnicos para labels amigáveis
+ */
+const FIELD_LABELS: Record<string, string> = {
+  id: "ID",
+  slug: "Identificador",
+  title: "Título",
+  description: "Descrição",
+  status: "Status",
+  publishedAt: "Data de Publicação",
+  "ownerUser.name": "Nome do Autor",
+  "ownerUser.email": "Email do Autor",
+  "ownerUser.sobrenome": "Sobrenome do Autor",
+};
+
+/**
+ * Simplifica campos da API para formato amigável
+ */
+function simplifyFilterFields(apiFields: any[]): FilterField[] {
+  const uniqueFields = new Map<string, FilterField>();
+
+  for (const field of apiFields) {
+    // Pular campos inválidos
+    if (!field.variavel || field.variavel === "ordem") continue;
+
+    // Pular campos bloqueados (sensíveis ou irrelevantes)
+    if (BLOCKED_FIELDS.some((blocked) => field.variavel.includes(blocked))) {
+      continue;
+    }
+
+    const key = field.variavel;
+
+    // Se já existe, pular (evitar duplicatas)
+    if (uniqueFields.has(key)) continue;
+
+    uniqueFields.set(key, {
+      id: field.id,
+      key,
+      label: FIELD_LABELS[key] || key,
+      type: field.tipo,
+    });
+  }
+
+  return Array.from(uniqueFields.values());
+}
 
 /**
  * Serviço para gerenciar cursos
@@ -56,20 +122,74 @@ export const courseService = {
   },
 
   /**
-   * Buscar curso por slug
+   * Buscar curso por ID (UUID) ou slug
    */
   async getById(id: string): Promise<CourseDTO | null> {
     try {
-      const response = await this.list(1, [
-        { key: "slug", operation: "EQUAL", value: id },
-      ]);
+      // Verificar se é UUID (formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+      const isUUID =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          id,
+        );
 
-      if (response.body && response.body.lista.length > 0) {
-        return response.body.lista[0];
+      console.log(`🔍 Buscando curso por ${isUUID ? "UUID" : "slug"}:`, id);
+
+      if (isUUID) {
+        // Se é UUID, buscar todos e filtrar no cliente (backend não suporta filtro por UUID)
+        console.log("⚠️ UUID detectado, buscando todos os cursos...");
+        const response = await this.list(1, []);
+
+        console.log(
+          "📚 Total de cursos retornados:",
+          response.body?.lista.length,
+        );
+
+        // Filtrar no cliente
+        const course = response.body?.lista.find((c) => c.id === id);
+
+        if (course) {
+          console.log("✅ Curso encontrado:", course);
+          return course;
+        }
+
+        // Se não encontrou na primeira página, tentar buscar mais páginas
+        if (response.body && response.body.total > response.body.lista.length) {
+          console.log("🔄 Buscando próximas páginas...");
+          const totalPages = Math.ceil(
+            response.body.total / response.body.lista.length,
+          );
+
+          for (let page = 2; page <= totalPages; page++) {
+            const pageResponse = await this.list(page, []);
+            const foundCourse = pageResponse.body?.lista.find(
+              (c) => c.id === id,
+            );
+            if (foundCourse) {
+              console.log("✅ Curso encontrado na página", page);
+              return foundCourse;
+            }
+          }
+        }
+
+        console.log("⚠️ Curso não encontrado");
+        return null;
+      } else {
+        // Se não é UUID, buscar por slug normalmente
+        console.log("📝 Buscando por slug...");
+        const response = await this.list(1, [
+          { key: "slug", operation: "EQUAL", value: id },
+        ]);
+
+        if (response.body && response.body.lista.length > 0) {
+          console.log("✅ Curso encontrado:", response.body.lista[0]);
+          return response.body.lista[0];
+        }
+
+        console.log("⚠️ Curso não encontrado");
+        return null;
       }
-      return null;
     } catch (error) {
-      console.error("Erro ao buscar curso por slug:", error);
+      console.error("❌ Erro ao buscar curso:", error);
       return null;
     }
   },
@@ -96,10 +216,36 @@ export const courseService = {
   },
 
   /**
-   * Buscar campos disponíveis para filtros
+   * Buscar campos disponíveis para filtros (versão simplificada)
    */
-  async getFields(): Promise<JsonResponse<any>> {
-    return apiGet<JsonResponse<any>>(`${BASE_PATH}/consulta`);
+  async getFields(): Promise<JsonResponse<FilterField[]>> {
+    // Use public GET so filter metadata is available without auth
+    const response = await apiPublicGet<JsonResponse<any>>(
+      `${BASE_PATH}/consulta`,
+    );
+
+    if (response.body && Array.isArray(response.body)) {
+      const simplifiedFields = simplifyFilterFields(response.body);
+      return {
+        statusCode: response.statusCode,
+        message: response.message,
+        body: simplifiedFields,
+      };
+    }
+
+    return {
+      statusCode: response.statusCode,
+      message: response.message,
+      body: [],
+    };
+  },
+
+  /**
+   * Buscar campos brutos da API (sem simplificação)
+   * Use apenas se precisar dos dados originais
+   */
+  async getRawFields(): Promise<JsonResponse<any>> {
+    return apiPublicGet<JsonResponse<any>>(`${BASE_PATH}/consulta`);
   },
 
   /**

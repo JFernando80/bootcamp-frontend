@@ -37,7 +37,12 @@ const items: SidebarItem[] = [
 ];
 
 const Sidebar = () => {
-  const { userName, userEmail } = useAuthStore();
+  const { userName, userEmail, isAdmin } = useAuthStore();
+
+  const visibleItems = items.filter((it) => {
+    if (it.href === "/createCourse" && !isAdmin) return false;
+    return true;
+  });
 
   return (
     <div className="w-64 bg-blue-600 text-white min-h-screen flex flex-col">
@@ -57,7 +62,7 @@ const Sidebar = () => {
         </div>
 
         <nav className="space-y-2">
-          {items.map((item) => (
+          {visibleItems.map((item) => (
             <NavLink
               key={item.href}
               to={item.href}

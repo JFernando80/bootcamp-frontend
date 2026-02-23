@@ -2,19 +2,13 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { Search, Filter, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { courseService } from "~/api/services";
-import type { CourseDTO, SearchCriteriaDTO } from "~/api/types";
+import type { CourseDTO, SearchCriteriaDTO, FilterField } from "~/api/types";
 import { Card } from "~/routes/home/components/Card";
 import { CourseSkeletonGrid } from "~/components/CourseCardSkeleton";
-
-interface FilterField {
-  id: number;
-  variavel: string;
-  tipo: string;
-  header: string;
-  status: string;
-}
+import { useNotification } from "~/components/NotificationProvider";
 
 export default function Courses() {
+  const { notify } = useNotification();
   const [courses, setCourses] = useState<CourseDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,16 +30,9 @@ export default function Courses() {
   const loadAvailableFields = async () => {
     try {
       const response = await courseService.getFields();
+      console.log("Campos carregados:", response);
       if (response.statusCode === 200 && response.body) {
-        // Filtrar apenas campos relevantes para filtros (não incluir "ordem" e campos duplicados)
-        const fields = response.body.filter(
-          (field: any) =>
-            field.variavel !== "ordem" &&
-            field.tipo !== "ordem" &&
-            !field.variavel.includes("password") &&
-            !field.variavel.includes("salt"),
-        );
-        setAvailableFields(fields);
+        setAvailableFields(response.body);
       }
     } catch (err) {
       console.error("Erro ao carregar campos de filtro:", err);
@@ -96,37 +83,18 @@ export default function Courses() {
     }
   };
 
-  const handleAddFilter = (field: string, operation: string, value: string) => {
-    if (!value.trim() || !field || !operation) {
+  const handleAddFilter = (field: string, value: string) => {
+    if (!value.trim() || !field) {
       console.error("Tentativa de adicionar filtro inválido:", {
         field,
-        operation,
         value,
       });
       return;
     }
 
-    // Validar que a operação é uma das válidas
-    const validOperations = [
-      "EQUAL",
-      "NOT_EQUAL",
-      "MATCH",
-      "MATCH_START",
-      "MATCH_END",
-      "GREATER_THAN",
-      "LESS_THAN",
-      "GREATER_THAN_EQUAL",
-      "LESS_THAN_EQUAL",
-    ];
-    if (!validOperations.includes(operation)) {
-      console.error("Operação inválida:", operation);
-      alert("Operação inválida selecionada.");
-      return;
-    }
-
     const newFilter: SearchCriteriaDTO = {
       key: field,
-      operation: operation as SearchCriteriaDTO["operation"],
+      operation: "MATCH", // Sempre usar "contém"
       value: value,
     };
 
@@ -202,7 +170,10 @@ export default function Courses() {
                   className="flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
                 >
                   <span>
-                    {filter.key} {filter.operation.toLowerCase()} {filter.value}
+                    {availableFields.find((f) => f.key === filter.key)?.label ||
+                      filter.key}
+                    {": "}
+                    {filter.value}
                   </span>
                   <button
                     onClick={() => handleRemoveFilter(index)}
@@ -225,7 +196,11 @@ export default function Courses() {
           {showFilters && (
             <div className="border-t pt-4">
               <h3 className="font-semibold mb-3">Filtros Avançados</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <p className="text-sm text-gray-600 mb-4">
+                Os filtros buscam por valores que <strong>contenham</strong> o
+                texto digitado
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Campo
@@ -236,29 +211,10 @@ export default function Courses() {
                   >
                     <option value="">Selecione um campo</option>
                     {availableFields.map((field) => (
-                      <option key={field.id} value={field.variavel}>
-                        {field.header}
+                      <option key={field.id} value={field.key}>
+                        {field.label}
                       </option>
                     ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Operação
-                  </label>
-                  <select
-                    id="filterOperation"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="EQUAL">Igual a</option>
-                    <option value="NOT_EQUAL">Diferente de</option>
-                    <option value="MATCH">Contém</option>
-                    <option value="MATCH_START">Começa com</option>
-                    <option value="MATCH_END">Termina com</option>
-                    <option value="GREATER_THAN">Maior que</option>
-                    <option value="LESS_THAN">Menor que</option>
-                    <option value="GREATER_THAN_EQUAL">Maior ou igual a</option>
-                    <option value="LESS_THAN_EQUAL">Menor ou igual a</option>
                   </select>
                 </div>
                 <div>
@@ -271,17 +227,52 @@ export default function Courses() {
                       id="filterValue"
                       placeholder="Digite o valor"
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const field = (
+                            document.getElementById(
+                              "filterField",
+                            ) as HTMLSelectElement
+                          ).value;
+                          const value = (
+                            document.getElementById(
+                              "filterValue",
+                            ) as HTMLInputElement
+                          ).value;
+
+                          if (!field || field === "") {
+                            notify({
+                              type: "info",
+                              message:
+                                "Por favor, selecione um campo para filtrar.",
+                            });
+                            return;
+                          }
+
+                          if (!value || value.trim() === "") {
+                            notify({
+                              type: "info",
+                              message:
+                                "Por favor, digite um valor para o filtro.",
+                            });
+                            return;
+                          }
+
+                          handleAddFilter(field, value);
+                          (
+                            document.getElementById(
+                              "filterValue",
+                            ) as HTMLInputElement
+                          ).value = "";
+                        }
+                      }}
                     />
                     <button
                       onClick={() => {
                         const field = (
                           document.getElementById(
                             "filterField",
-                          ) as HTMLSelectElement
-                        ).value;
-                        const operation = (
-                          document.getElementById(
-                            "filterOperation",
                           ) as HTMLSelectElement
                         ).value;
                         const value = (
@@ -291,21 +282,24 @@ export default function Courses() {
                         ).value;
 
                         if (!field || field === "") {
-                          alert("Por favor, selecione um campo para filtrar.");
-                          return;
-                        }
-
-                        if (!operation || operation === "") {
-                          alert("Por favor, selecione uma operação.");
+                          notify({
+                            type: "info",
+                            message:
+                              "Por favor, selecione um campo para filtrar.",
+                          });
                           return;
                         }
 
                         if (!value || value.trim() === "") {
-                          alert("Por favor, digite um valor para o filtro.");
+                          notify({
+                            type: "info",
+                            message:
+                              "Por favor, digite um valor para o filtro.",
+                          });
                           return;
                         }
 
-                        handleAddFilter(field, operation, value);
+                        handleAddFilter(field, value);
                         (
                           document.getElementById(
                             "filterValue",

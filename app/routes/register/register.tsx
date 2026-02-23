@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { registerUser } from "~/api/authService";
 import { useNavigate } from "react-router";
+import { useNotification } from "~/components/NotificationProvider";
 
 export default function RegisterCard() {
   const navigate = useNavigate();
+  const { notify } = useNotification();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,15 +34,21 @@ export default function RegisterCard() {
       if (!acceptTerms) {
         throw new Error("É necessário aceitar os termos");
       }
-      await registerUser({
-        name: fullName,
-        email,
-        sobrenome,
-        password,
-      });
+      const isAdmin = userType === "ngo"; // Representante de ONG -> administrador flag true
+      await registerUser(
+        {
+          name: fullName,
+          email,
+          sobrenome,
+          password,
+        },
+        isAdmin,
+      );
       navigate("/myArea");
     } catch (err: any) {
-      setError(err.message || "Erro ao registrar");
+      const msg = err.message || "Erro ao registrar";
+      setError(msg);
+      notify({ type: "error", message: msg });
     } finally {
       setLoading(false);
     }
@@ -178,7 +186,6 @@ export default function RegisterCard() {
                 >
                   <option value="student">Estudante</option>
                   <option value="ngo">Representante de ONG</option>
-                  <option value="teacher">Professor</option>
                 </select>
               </div>
 

@@ -10,6 +10,7 @@ export default [
   route("courseDetails/:courseId", "routes/courseDetails/courseDetails.tsx"),
   route("createCourse", "routes/createCourse/createCourse.tsx"),
   route("manageCourses", "routes/manageCourses/manageCourses.tsx"),
+  route("manageCourses/:slug", "routes/manageCourses/manageCourseDetail.tsx"),
   route("editCourse/:slug", "routes/editCourse/editCourse.tsx"),
   route("myArea", "routes/myArea/myArea.tsx", [
     index("routes/myArea/courses.tsx"),

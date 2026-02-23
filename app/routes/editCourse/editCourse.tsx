@@ -44,10 +44,21 @@ export default function EditCourse() {
 
     const formData = new FormData(e.currentTarget);
 
+    const title = (formData.get("title") as string) || "";
+    const description = (formData.get("description") as string) || "";
+
+    const slugify = (text: string) =>
+      text
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+
     const courseData: CourseDTO = {
-      slug: (formData.get("slug") as string) || "",
-      title: (formData.get("title") as string) || "",
-      description: (formData.get("description") as string) || "",
+      slug: course?.slug || slugify(title || description || "curso"),
+      title,
+      description,
       createdAtS: course?.createdAtS || new Date().toLocaleDateString("pt-BR"),
       publishedAtS: course?.publishedAtS,
     };
@@ -172,28 +183,7 @@ export default function EditCourse() {
               </h2>
 
               <div className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="slug"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Slug do Curso * (identificador único)
-                  </label>
-                  <input
-                    type="text"
-                    id="slug"
-                    name="slug"
-                    required
-                    pattern="^[a-z0-9-]+$"
-                    defaultValue={course?.slug || ""}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-100"
-                    placeholder="Ex: gestao-projetos-sociais"
-                    disabled
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    O slug não pode ser alterado após a criação
-                  </p>
-                </div>
+                {/* Slug is not editable here; it is generated at creation and preserved */}
 
                 <div>
                   <label
@@ -243,7 +233,7 @@ export default function EditCourse() {
             <div className="flex gap-4 justify-end">
               <button
                 type="button"
-                onClick={() => navigate("/manageCourses")}
+                onClick={() => navigate(-1)}
                 className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition cursor-pointer"
                 disabled={loading || success}
               >

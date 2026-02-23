@@ -1,6 +1,8 @@
 import CryptoJS from "crypto-js";
 import httpClient from "./httpClient";
 import { useAuthStore } from "~/stores/authStore";
+import { userService } from "./services";
+import { enumService } from "./services";
 import type {
   JsonResponse,
   SecurityDTO,
@@ -32,72 +34,73 @@ interface SecurityResponse {
   };
 }
 
-interface LoginResponse {
-  statusCode: number;
-  message: string; // JWT vem aqui!
-  body: null;
+// Função handshake: obtém id/publicKey do endpoint de segurança
+export async function handshake(screen: string = "cadastro") {
+  const resp = await enumService.getSecurity(screen);
+  // resp.body deve conter { id, publicKey, screen, userId }
+  if (resp && resp.body) {
+    const body = resp.body;
+    return { id: body.id, publicKey: body.publicKey };
+  }
+  throw new Error("Handshake falhou: resposta inválida do servidor");
 }
 
-function encryptWithPublicKey(plain: string, publicKey: string): string {
-  return CryptoJS.AES.encrypt(plain, publicKey).toString();
-}
+export async function registerUser(
+  form: RegisterBody,
+  isAdmin: boolean = false,
+): Promise<JsonResponse> {
+  // Passo 1: Handshake — obter id e publicKey de /security/cadastro
+  const { id: securityId, publicKey } = await handshake("cadastro");
 
-/**
- * Realizar handshake com o servidor para obter chave pública
- */
-async function handshake(): Promise<{ id: number; publicKey: string }> {
-  const res = await httpClient.get<SecurityResponse>(
-    `/bootcamp/security/cadastro`,
-  );
-  if (res.data.statusCode !== 200) throw new Error("Falha no handshake");
-  const { id, publicKey } = res.data.body;
-  return { id, publicKey };
-}
+  // Passo 2: Criptografar a senha com CryptoJS AES usando a publicKey
+  const passwordHash = CryptoJS.AES.encrypt(
+    form.password,
+    publicKey,
+  ).toString();
 
-/**
- * Registrar novo usuário
- */
-export async function registerUser(form: RegisterBody): Promise<void> {
-  const { id, publicKey } = await handshake();
-
-  // A publicKey é a CHAVE de criptografia, não concatenar com a senha
-  const passwordHash = encryptWithPublicKey(form.password, publicKey);
-
-  await httpClient.post(
+  // Passo 3: Enviar cadastro com header 'token' contendo o securityId
+  const resp = await httpClient.post<JsonResponse>(
     "/bootcamp/user/new",
     {
       name: form.name,
-      email: form.email,
       sobrenome: form.sobrenome,
+      email: form.email,
       passwordHash,
-      administrador: false,
+      administrador: isAdmin,
     },
-    { headers: { token: id } },
+    { headers: { token: securityId } },
   );
 
-  useAuthStore.getState().login(null, id, publicKey);
+  // Se o backend retornou um statusCode de erro no body, lançar mensagem
+  if (
+    resp.data.statusCode &&
+    resp.data.statusCode !== 200 &&
+    resp.data.statusCode !== 201
+  ) {
+    throw new Error(resp.data.message || "Erro ao cadastrar usuário");
+  }
+
+  return resp.data;
 }
 
-/**
- * Realizar login do usuário
- */
-export async function loginUser(form: LoginBody): Promise<LoginResponse> {
-  const { id, publicKey } = await handshake();
+export async function loginUser(form: LoginBody): Promise<JsonResponse> {
+  // Passo 1: Handshake — obter id e publicKey de /security/cadastro
+  const { id: securityId, publicKey } = await handshake("cadastro");
 
-  // Formato: email + "}*{" + password (SEM concatenar publicKey), depois criptografar
+  // Passo 2: Criptografar credenciais com CryptoJS AES usando a publicKey
   const credentials = `${form.email}}*{${form.password}`;
-  const encryptedCredentials = encryptWithPublicKey(credentials, publicKey);
+  const encryptedLogin = CryptoJS.AES.encrypt(
+    credentials,
+    publicKey,
+  ).toString();
 
-  const loginDTO: LoginDTO = {
-    login: encryptedCredentials,
-  };
+  const loginDTO: LoginDTO = { login: encryptedLogin };
 
-  const resp = await httpClient.post<LoginResponse>(
+  // Passo 3: Enviar login com header 'token' contendo o securityId
+  const resp = await httpClient.post<JsonResponse>(
     "/bootcamp/user/login",
     loginDTO,
-    {
-      headers: { token: id },
-    },
+    { headers: { token: securityId } },
   );
 
   console.log("🔑 Login Response completa:", resp.data);
@@ -115,6 +118,7 @@ export async function loginUser(form: LoginBody): Promise<LoginResponse> {
       // Decodificar JWT para extrair dados
       const jwtData = parseJwt(jwtToken);
       console.log("🔓 JWT Decoded:", jwtData);
+      console.log("🔍 Todas as chaves do JWT:", Object.keys(jwtData));
 
       // A estrutura do JWT é diferente - dados estão no nível raiz
       const token = jwtData.token?.token; // token.token
@@ -123,33 +127,140 @@ export async function loginUser(form: LoginBody): Promise<LoginResponse> {
       const userEmail = form.email; // Email vem do formulário
       const isAdmin = jwtData.administrador === true; // Verificar se é admin
 
+      // Tentar extrair userId de diferentes campos possíveis
+      const userId =
+        jwtData.id ||
+        jwtData.userId ||
+        jwtData.user_id ||
+        jwtData.jti ||
+        jwtData.token?.userId ||
+        jwtData.user?.id;
+
       console.log("✅ Token:", token);
       console.log("✅ RefreshToken:", refreshToken);
       console.log("✅ UserName:", userName);
       console.log("✅ UserEmail:", userEmail);
       console.log("✅ IsAdmin:", isAdmin);
+      console.log("✅ UserId:", userId);
+      console.log("🔍 Tentativas userId:", {
+        id: jwtData.id,
+        userId: jwtData.userId,
+        user_id: jwtData.user_id,
+        jti: jwtData.jti,
+        tokenUserId: jwtData.token?.userId,
+        userDotId: jwtData.user?.id,
+      });
 
       console.log("💾 Salvando no store:", {
         token,
-        sessionId: id,
-        publicKey,
+        sessionId: undefined,
+        publicKey: undefined,
         userName,
         userEmail,
         isAdmin,
+        refreshToken,
+        userId,
       });
 
+      // Calcular ttlMinutes com base no claim `exp` do JWT (se disponível)
+      let ttlMinutes: number | undefined = undefined;
+      try {
+        const expClaim = jwtData.exp || jwtData.token?.exp || jwtData.expires;
+        if (expClaim) {
+          const expMs = Number(expClaim) * 1000;
+          const diffMin = Math.max(1, Math.floor((expMs - Date.now()) / 60000));
+          ttlMinutes = diffMin;
+        }
+      } catch (err) {
+        // ignore, usaremos o ttl padrão
+      }
+
+      // Salvar no store temporariamente (usando ttl calculado se houver)
       useAuthStore
         .getState()
-        .login(token, id, publicKey, userName, userEmail, isAdmin);
+        .login(
+          token,
+          null,
+          null,
+          userName,
+          userEmail,
+          isAdmin,
+          refreshToken,
+          ttlMinutes,
+          userId,
+        );
+
+      // Se o userId não foi encontrado no JWT, buscar via API.
+      // Também, se o JWT não trouxe o campo `administrador`, usar o valor do usuário retornado.
+      if (!userId) {
+        console.log("🔍 UserId não encontrado no JWT, buscando via API...");
+        try {
+          const user = await userService.getByEmail(userEmail);
+          if (user && user.id) {
+            console.log("✅ UserId encontrado via API:", user.id);
+            // Determinar isAdmin final: priorizar o JWT, mas aceitar o valor do usuário se necessário
+            const isAdminFromUser = !!user.administrador;
+            const finalIsAdmin = isAdmin || isAdminFromUser;
+
+            // Atualizar store com o userId correto e isAdmin possivelmente corrigido
+            useAuthStore
+              .getState()
+              .login(
+                token,
+                null,
+                null,
+                userName,
+                userEmail,
+                finalIsAdmin,
+                refreshToken,
+                undefined,
+                user.id,
+              );
+          } else {
+            console.warn("⚠️ Não foi possível obter userId via API");
+          }
+        } catch (error) {
+          console.error("❌ Erro ao buscar userId via API:", error);
+        }
+      } else {
+        // Caso tenhamos userId mas o JWT não trouxe administrador, tentar obter o flag via API
+        if (!isAdmin) {
+          try {
+            const user = await userService.getByEmail(userEmail);
+            if (user && user.administrador) {
+              console.log(
+                "🔍 Atualizando isAdmin a partir da API (user.administrador)",
+              );
+              useAuthStore
+                .getState()
+                .login(
+                  token,
+                  null,
+                  null,
+                  userName,
+                  userEmail,
+                  true,
+                  refreshToken,
+                  undefined,
+                  userId,
+                );
+            }
+          } catch (err) {
+            // silencioso — não é crítico
+          }
+        }
+      }
 
       // Verificar se foi salvo
       const state = useAuthStore.getState();
       console.log("✅ Estado após login:", {
         isAuthenticated: state.isAuthenticated,
         token: state.token,
+        refreshToken: state.refreshToken,
         sessionId: state.sessionId,
         userName: state.userName,
         userEmail: state.userEmail,
+        userId: state.userId,
       });
     } catch (error) {
       console.error("❌ Erro ao processar JWT:", error);
@@ -176,6 +287,80 @@ function parseJwt(token: string) {
   return JSON.parse(jsonPayload);
 }
 
+// Criptografia RSA usando Web Crypto API (PEM public key -> RSA-OAEP SHA-256)
+async function encryptWithPublicKey(
+  plainText: string,
+  publicKeyPem: string,
+): Promise<string> {
+  const trimmed = publicKeyPem.trim();
+  try {
+    // Se for JWK JSON, importar diretamente
+    if (trimmed.startsWith("{")) {
+      const jwk = JSON.parse(trimmed);
+      const key = await crypto.subtle.importKey(
+        "jwk",
+        jwk,
+        { name: "RSA-OAEP", hash: "SHA-256" },
+        false,
+        ["encrypt"],
+      );
+
+      const encoder = new TextEncoder();
+      const data = encoder.encode(plainText);
+      const encrypted = await crypto.subtle.encrypt(
+        { name: "RSA-OAEP" },
+        key,
+        data,
+      );
+      const bytes = new Uint8Array(encrypted);
+      let binary = "";
+      for (let i = 0; i < bytes.byteLength; i++)
+        binary += String.fromCharCode(bytes[i]);
+      return btoa(binary);
+    }
+
+    // Remover cabeçalhos PEM possíveis e espaços
+    let pem = publicKeyPem
+      .replace(/-----BEGIN PUBLIC KEY-----/g, "")
+      .replace(/-----END PUBLIC KEY-----/g, "")
+      .replace(/-----BEGIN RSA PUBLIC KEY-----/g, "")
+      .replace(/-----END RSA PUBLIC KEY-----/g, "")
+      .replace(/\s+/g, "");
+
+    // Converter base64url para base64 (se necessário) e adicionar padding
+    pem = pem.replace(/-/g, "+").replace(/_/g, "/");
+    while (pem.length % 4 !== 0) pem += "=";
+
+    // Converter base64 para ArrayBuffer
+    const binaryDer = Uint8Array.from(atob(pem), (c) => c.charCodeAt(0));
+
+    // Importar chave pública (SPKI)
+    const key = await crypto.subtle.importKey(
+      "spki",
+      binaryDer.buffer,
+      { name: "RSA-OAEP", hash: "SHA-256" },
+      false,
+      ["encrypt"],
+    );
+
+    const encoder = new TextEncoder();
+    const data = encoder.encode(plainText);
+    const encrypted = await crypto.subtle.encrypt(
+      { name: "RSA-OAEP" },
+      key,
+      data,
+    );
+    const bytes = new Uint8Array(encrypted);
+    let binary = "";
+    for (let i = 0; i < bytes.byteLength; i++)
+      binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  } catch (err: any) {
+    console.error("❌ encryptWithPublicKey failed:", err);
+    throw new Error(`encryptWithPublicKey failed: ${err?.message || err}`);
+  }
+}
+
 /**
  * Validar token atual
  */
@@ -193,11 +378,8 @@ export async function validateToken(
 /**
  * Atualizar token expirado
  */
-export async function refreshToken(
-  token: string,
-  refreshToken: string,
-): Promise<any> {
-  const { id } = await handshake();
+export async function refreshToken(refreshToken: string): Promise<any> {
+  const { id, publicKey } = await handshake();
 
   const resp = await httpClient.post<any>(
     "/bootcamp/user/refresh_token",
@@ -206,9 +388,73 @@ export async function refreshToken(
   );
 
   if (resp.data.statusCode === 200 && resp.data.body) {
-    const { sessionId, publicKey } = useAuthStore.getState();
+    // Preservar dados do usuário atual
+    const { userName, userEmail, isAdmin, userId } = useAuthStore.getState();
+
+    // Extrair novo token e refreshToken da resposta
     const newToken = resp.data.body.tokenDTO?.token || resp.data.body.token;
-    useAuthStore.getState().login(newToken, sessionId!, publicKey!);
+    const newRefreshToken =
+      resp.data.body.tokenDTO?.refreshToken || refreshToken;
+
+    // Calcular ttlMinutes a partir do novo token (se disponível)
+    let ttlMinutes: number | undefined = undefined;
+    try {
+      if (newToken) {
+        const newJwt = parseJwt(newToken);
+        const expClaim = newJwt.exp || newJwt.token?.exp || newJwt.expires;
+        if (expClaim) {
+          const expMs = Number(expClaim) * 1000;
+          ttlMinutes = Math.max(1, Math.floor((expMs - Date.now()) / 60000));
+        }
+      }
+    } catch (err) {
+      // ignore
+    }
+
+    // Atualizar store mantendo os dados do usuário
+    useAuthStore
+      .getState()
+      .login(
+        newToken,
+        id,
+        publicKey,
+        userName || undefined,
+        userEmail || undefined,
+        isAdmin,
+        newRefreshToken,
+        ttlMinutes,
+        userId || undefined,
+      );
+
+    console.log("🔄 Token atualizado via refresh_token");
+    // Se o flag isAdmin não estiver definido/true, tentar obter via API pelo email salvo
+    try {
+      const current = useAuthStore.getState();
+      if (!current.isAdmin && current.userEmail) {
+        const user = await userService.getByEmail(current.userEmail);
+        if (user && user.administrador) {
+          console.log(
+            "🔍 Atualizando isAdmin via refreshToken a partir da API (user.administrador)",
+          );
+          useAuthStore
+            .getState()
+            .login(
+              newToken,
+              id,
+              publicKey,
+              current.userName || undefined,
+              current.userEmail || undefined,
+              true,
+              newRefreshToken,
+              undefined,
+              current.userId || undefined,
+            );
+        }
+      }
+    } catch (err) {
+      // não crítico — apenas logar
+      console.error("❌ Erro ao sincronizar isAdmin após refreshToken:", err);
+    }
   }
 
   return resp.data;

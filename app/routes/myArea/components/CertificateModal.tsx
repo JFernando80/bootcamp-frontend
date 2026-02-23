@@ -1,5 +1,6 @@
 import React from "react";
 import { Download, X, Award } from "lucide-react";
+import { useNotification } from "~/components/NotificationProvider";
 
 export type CertificateData = {
   nome: string;
@@ -15,14 +16,17 @@ type Props = {
 };
 
 export const CertificateModal: React.FC<Props> = ({ certificate, onClose }) => {
+  const { notify } = useNotification();
+
   const handleDownload = () => {
-    alert(
-      `Iniciando download do certificado: ${certificate.nome}. (Simulação)`
-    );
+    notify({
+      type: "info",
+      message: `Iniciando download do certificado: ${certificate.nome}. (Simulação)`,
+    });
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative transform transition-all duration-300 scale-100 opacity-100">
         <div className="p-4 md:p-6 flex justify-end">
           <button

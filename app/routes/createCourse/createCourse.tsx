@@ -19,10 +19,23 @@ export default function CreateCourse() {
 
     const formData = new FormData(e.currentTarget);
 
+    const title = (formData.get("title") as string) || "";
+    const description = (formData.get("description") as string) || "";
+
+    const slugify = (text: string) =>
+      text
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+
+    const generatedSlug = slugify(title || description || "curso");
+
     const courseData: CourseDTO = {
-      slug: (formData.get("slug") as string) || "",
-      title: (formData.get("title") as string) || "",
-      description: (formData.get("description") as string) || "",
+      slug: generatedSlug,
+      title,
+      description,
       createdAtS: new Date().toLocaleDateString("pt-BR"), // formato dd/MM/yyyy
     };
 
@@ -38,10 +51,20 @@ export default function CreateCourse() {
       console.log("Curso criado com sucesso:", response);
       setSuccess(true);
 
-      // Redireciona após 2 segundos
+      // Redireciona para gerenciar o curso (adicionar módulos)
       setTimeout(() => {
-        navigate("/myArea");
-      }, 2000);
+        const identifier =
+          response.body?.id || response.body?.slug || courseData.slug;
+        if (identifier) {
+          console.log("Redirecionando para:", `/manageCourses/${identifier}`);
+          navigate(`/manageCourses/${identifier}`);
+        } else {
+          console.error(
+            "Nenhum identificador encontrado, redirecionando para lista",
+          );
+          navigate("/manageCourses");
+        }
+      }, 1500);
     } catch (err: any) {
       console.error("=== ERRO AO CRIAR CURSO ===");
       console.error("Erro completo:", err);
@@ -104,13 +127,23 @@ export default function CreateCourse() {
                 <p className="text-green-800 font-semibold">
                   Curso criado com sucesso!
                 </p>
-                <p className="text-green-700 text-sm">Redirecionando...</p>
+                <p className="text-green-700 text-sm">
+                  Redirecionando para adicionar módulos e atividades...
+                </p>
               </div>
             </div>
           )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Info sobre módulos */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-blue-800 text-sm">
+                <strong>ℹ️ Próximo passo:</strong> Após criar o curso, você será
+                redirecionado para adicionar módulos e atividades ao curso.
+              </p>
+            </div>
+
             {/* Informações Básicas */}
             <div className="bg-white rounded-xl shadow-md p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6">
@@ -118,27 +151,7 @@ export default function CreateCourse() {
               </h2>
 
               <div className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="slug"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Slug do Curso * (identificador único)
-                  </label>
-                  <input
-                    type="text"
-                    id="slug"
-                    name="slug"
-                    required
-                    pattern="^[a-z0-9-]+$"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Ex: gestao-projetos-sociais"
-                    disabled={loading || success}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Use apenas letras minúsculas, números e hífens
-                  </p>
-                </div>
+                {/* Slug is auto-generated from title */}
 
                 <div>
                   <label

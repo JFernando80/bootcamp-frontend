@@ -4,6 +4,8 @@ import { persist } from "zustand/middleware";
 interface AuthState {
   isAuthenticated: boolean;
   token: string | null;
+  refreshToken: string | null;
+  userId: string | null;
   sessionId: number | null;
   publicKey: string | null;
   sessionExpiry: number | null;
@@ -12,12 +14,14 @@ interface AuthState {
   isAdmin: boolean;
   login: (
     token: string | null,
-    sessionId: number,
-    publicKey: string,
+    sessionId: number | null,
+    publicKey: string | null,
     userName?: string,
     userEmail?: string,
     isAdmin?: boolean,
+    refreshToken?: string,
     ttlMinutes?: number,
+    userId?: string,
   ) => void;
   logout: () => void;
 }
@@ -27,6 +31,8 @@ export const useAuthStore = create(
     (set) => ({
       isAuthenticated: false,
       token: null,
+      refreshToken: null,
+      userId: null,
       sessionId: null,
       publicKey: null,
       sessionExpiry: null,
@@ -41,7 +47,9 @@ export const useAuthStore = create(
         userName = null,
         userEmail = null,
         isAdmin = false,
+        refreshToken = null,
         ttlMinutes = 30,
+        userId = null,
       ) => {
         console.log("🏪 authStore.login() chamado com:", {
           token,
@@ -50,12 +58,16 @@ export const useAuthStore = create(
           userName,
           userEmail,
           isAdmin,
+          refreshToken,
           ttlMinutes,
+          userId,
         });
 
         set({
           isAuthenticated: true,
           token,
+          refreshToken,
+          userId,
           sessionId,
           publicKey,
           userName,
@@ -72,6 +84,8 @@ export const useAuthStore = create(
         set({
           isAuthenticated: false,
           token: null,
+          refreshToken: null,
+          userId: null,
           sessionId: null,
           publicKey: null,
           sessionExpiry: null,
@@ -88,6 +102,8 @@ export const useAuthStore = create(
         ({
           isAuthenticated: state.isAuthenticated,
           token: state.token,
+          refreshToken: state.refreshToken,
+          userId: state.userId,
           isAdmin: state.isAdmin,
           sessionId: state.sessionId,
           publicKey: state.publicKey,

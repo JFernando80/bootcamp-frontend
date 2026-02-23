@@ -8,6 +8,11 @@ export interface CourseDTO {
   publishedAtS?: string;
   createdAtS?: string;
   updatedAtS?: string;
+  ownerUser?: {
+    id?: string;
+    name?: string;
+    email?: string;
+  };
 }
 
 export interface ModuleDTO {
@@ -37,9 +42,11 @@ export interface ActivityDTO {
 export interface UserCourseDTO {
   id?: string;
   userId: string;
+  userName?: string;
   courseId: string;
-  status: string;
-  progress?: number;
+  courseDescription?: string;
+  progressPercent?: number;
+  status?: string;
   enrolledAt?: string;
   completedAt?: string;
   createdAt?: string;
@@ -49,9 +56,11 @@ export interface UserCourseDTO {
 export interface UserModuleDTO {
   id?: string;
   userId: string;
+  userName?: string;
   moduleId: string;
-  status: string;
-  progress?: number;
+  moduleDescription?: string;
+  status?: string;
+  progressPercent?: number;
   startedAt?: string;
   completedAt?: string;
   createdAt?: string;
@@ -61,11 +70,16 @@ export interface UserModuleDTO {
 export interface UserActivityDTO {
   id?: string;
   userId: string;
+  userName?: string;
   activityId: string;
-  status: string;
-  completed: boolean;
+  activityType?: string;
+  moduleId?: string;
+  moduleDescription?: string;
+  status?: string;
   score?: number;
-  attempts?: number;
+  attemptNumber?: number | null;
+  answerJson?: string | null;
+  submittedAtS?: string | null;
   startedAt?: string;
   completedAt?: string;
   createdAt?: string;

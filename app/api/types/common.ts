@@ -25,9 +25,20 @@ export interface SearchCriteriaDTO {
     | "GREATER_THAN_EQUAL"
     | "LESS_THAN_EQUAL";
   value: string | number | boolean;
+  classes?: string; // Para queries de relacionamento (ex: "course", "module", "user")
 }
 
 export interface EnumItem {
   key: string;
   value: string;
+}
+
+/**
+ * Campo simplificado para filtros
+ */
+export interface FilterField {
+  id: number;
+  key: string; // Ex: "title", "ownerUser.name"
+  label: string; // Ex: "Título", "Nome do Autor"
+  type: "string" | "number" | "date" | "boolean" | "uuid";
 }

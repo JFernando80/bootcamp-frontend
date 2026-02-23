@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
 import { ProtectedRoute } from "~/components/ProtectedRoute";
-import { BookOpen, Edit2, Trash2, Plus, Search } from "lucide-react";
+import { BookOpen, Edit2, Trash2, Plus, Search, Settings } from "lucide-react";
 import { courseService } from "~/api/services/courseService";
+import { useNotification } from "~/components/NotificationProvider";
 import type { CourseDTO } from "~/api/types";
+import { useAuthStore } from "~/stores/authStore";
 
 export default function ManageCourses() {
+  const { notify } = useNotification();
   const navigate = useNavigate();
+  const { userId, isAdmin } = useAuthStore();
   const [courses, setCourses] = useState<CourseDTO[]>([]);
   const [filteredCourses, setFilteredCourses] = useState<CourseDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,10 +67,12 @@ export default function ManageCourses() {
       await loadCourses();
     } catch (err: any) {
       console.error("Erro ao deletar curso:", err);
-      alert(
-        err.response?.body?.message ||
+      notify({
+        type: "error",
+        message:
+          err.response?.body?.message ||
           "Erro ao deletar curso. Tente novamente.",
-      );
+      });
     }
   };
 
@@ -91,13 +97,15 @@ export default function ManageCourses() {
                 </div>
               </div>
 
-              <Link
-                to="/createCourse"
-                className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition"
-              >
-                <Plus className="h-5 w-5" />
-                Novo Curso
-              </Link>
+              {isAdmin && (
+                <Link
+                  to="/createCourse"
+                  className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition"
+                >
+                  <Plus className="h-5 w-5" />
+                  Novo Curso
+                </Link>
+              )}
             </div>
           </div>
 
@@ -154,81 +162,97 @@ export default function ManageCourses() {
           {/* Courses List */}
           {!loading && filteredCourses.length > 0 && (
             <div className="bg-white rounded-xl shadow-md overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Slug
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Título
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Descrição
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Criado em
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ações
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredCourses.map((course) => (
-                    <tr key={course.slug} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {course.slug}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {course.title}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500 max-w-md truncate">
-                        {course.description}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {course.createdAtS || "N/A"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex items-center gap-2">
-                          <Link
-                            to={`/editCourse/${course.slug}`}
-                            className="text-blue-600 hover:text-blue-900 inline-flex items-center gap-1"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                            Editar
-                          </Link>
-
-                          {deleteConfirm === course.slug ? (
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleDelete(course.slug!)}
-                                className="text-red-600 hover:text-red-900 font-semibold"
-                              >
-                                Confirmar
-                              </button>
-                              <button
-                                onClick={() => setDeleteConfirm(null)}
-                                className="text-gray-600 hover:text-gray-900"
-                              >
-                                Cancelar
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setDeleteConfirm(course.slug!)}
-                              className="text-red-600 hover:text-red-900 inline-flex items-center gap-1"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Deletar
-                            </button>
-                          )}
-                        </div>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Slug
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Título
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Descrição
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Criado em
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Ações
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredCourses.map((course) => (
+                      <tr key={course.slug} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {course.slug}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {course.title}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500 max-w-md truncate">
+                          {course.description}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {course.createdAtS || "N/A"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex items-center gap-2">
+                            {(isAdmin || course.ownerUser?.id === userId) && (
+                              <>
+                                <Link
+                                  to={`/manageCourses/${course.slug}`}
+                                  className="text-purple-600 hover:text-purple-900 inline-flex items-center gap-1"
+                                >
+                                  <Settings className="h-4 w-4" />
+                                  Gerenciar
+                                </Link>
+
+                                <Link
+                                  to={`/editCourse/${course.slug}`}
+                                  className="text-blue-600 hover:text-blue-900 inline-flex items-center gap-1"
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                  Editar
+                                </Link>
+
+                                {deleteConfirm === course.slug ? (
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => handleDelete(course.slug!)}
+                                      className="text-red-600 hover:text-red-900 font-semibold"
+                                    >
+                                      Confirmar
+                                    </button>
+                                    <button
+                                      onClick={() => setDeleteConfirm(null)}
+                                      className="text-gray-600 hover:text-gray-900"
+                                    >
+                                      Cancelar
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() =>
+                                      setDeleteConfirm(course.slug!)
+                                    }
+                                    className="text-red-600 hover:text-red-900 inline-flex items-center gap-1"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    Deletar
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
