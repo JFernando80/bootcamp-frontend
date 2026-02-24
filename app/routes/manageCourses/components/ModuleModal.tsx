@@ -47,7 +47,8 @@ export function ModuleModal({
         (async () => {
           try {
             const resp = await activityService.getByModule(module.id!);
-            setActivities(resp.body?.lista || []);
+            const lista = resp.body?.lista || [];
+            setActivities(lista.slice().reverse());
           } catch (e) {
             console.error("Erro ao carregar atividades do módulo:", e);
           }
@@ -82,7 +83,8 @@ export function ModuleModal({
         // recarregar atividades
         try {
           const resp = await activityService.getByModule(module.id!);
-          setActivities(resp.body?.lista || []);
+          const lista = resp.body?.lista || [];
+          setActivities(lista.slice().reverse());
         } catch (e) {
           console.error("Erro ao recarregar atividades:", e);
         }
@@ -257,7 +259,8 @@ export function ModuleModal({
           onSuccess={async () => {
             if (module?.id) {
               const resp = await activityService.getByModule(module.id!);
-              setActivities(resp.body?.lista || []);
+              const lista = resp.body?.lista || [];
+              setActivities(lista.slice().reverse());
             }
             setActivityModalOpen(false);
           }}
@@ -328,7 +331,8 @@ export function ModuleModal({
                             const resp = await activityService.getByModule(
                               module.id!,
                             );
-                            setActivities(resp.body?.lista || []);
+                            const lista = resp.body?.lista || [];
+                            setActivities(lista.slice().reverse());
                           } catch (err) {
                             console.error(err);
                           }

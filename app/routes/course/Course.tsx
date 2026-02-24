@@ -102,7 +102,10 @@ export default function Course() {
             classes: "module",
           },
         ]);
-        activitiesMap[module.id!] = activitiesResponse.body?.lista || [];
+        const lista: ActivityDTO[] = activitiesResponse.body?.lista || [];
+        // Backend retorna lista em ordem do mais novo para o mais antigo.
+        // O frontend deve exibir FIFO (mais antigo primeiro), então sempre inverter para exibição.
+        activitiesMap[module.id!] = lista.slice().reverse();
       }
       setActivities(activitiesMap);
 
@@ -363,10 +366,6 @@ export default function Course() {
                   <PlayCircle className="h-16 w-16 text-white" />
                 </div>
 
-                <div className="text-3xl font-bold mb-6 text-green-600">
-                  Grátis
-                </div>
-
                 <div className="w-full mb-4">
                   <EnrollButton course={course} />
                 </div>
@@ -397,17 +396,6 @@ export default function Course() {
           {/* Coluna Principal */}
           <div className="lg:col-span-2 space-y-8">
             {/* Sobre o Curso */}
-            <div className="bg-white rounded-xl shadow-md p-8">
-              <h2 className="text-2xl font-bold mb-4 text-gray-900">
-                Sobre o curso
-              </h2>
-              <div className="prose max-w-none">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-                  {course.description || "-"}
-                </p>
-              </div>
-            </div>
-
             {/* Módulos e Atividades */}
             {modules.length > 0 && (
               <div className="bg-white rounded-xl shadow-md p-8">

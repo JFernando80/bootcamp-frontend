@@ -91,7 +91,8 @@ export default function ManageCourseDetail() {
             classes: "module",
           },
         ]);
-        activitiesMap[module.id!] = activitiesResponse.body?.lista || [];
+        const lista = activitiesResponse.body?.lista || [];
+        activitiesMap[module.id!] = lista.slice().reverse();
       }
       setActivities(activitiesMap);
     } catch (err: any) {

@@ -213,36 +213,34 @@ export function EnrollButton({ course, onEnrolled }: EnrollButtonProps) {
 
   if (enrolled) {
     return (
-      <div className="inline-flex flex-col gap-2">
-        <div className="inline-flex items-center gap-2 px-6 py-3 bg-green-100 text-green-700 font-semibold rounded-lg">
-          <Check className="h-5 w-5" />
-          Você já está inscrito
-        </div>
-        <div className="flex gap-2">
+      <div className="inline-flex flex-col gap-3 w-full">
+        <div className="flex flex-col gap-2 w-full">
           <Link
             to={`/courseDetails/${enrollment?.courseId || course.id || course.slug}`}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
+            className="inline-flex w-full justify-center items-center gap-2 px-4 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
           >
             Acessar Curso
           </Link>
           {!confirmUnenroll ? (
             <button
               onClick={() => setConfirmUnenroll(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 text-red-600 font-semibold rounded-lg hover:bg-red-50 transition"
+              className="inline-flex w-full justify-center items-center gap-2 px-4 py-3 bg-white border border-red-300 text-red-600 font-semibold rounded-lg hover:bg-red-50 transition"
             >
               <Trash2 className="h-4 w-4" />
               Cancelar inscrição
             </button>
           ) : (
-            <div className="inline-flex items-center gap-2 p-2 bg-red-50 border border-red-200 rounded-lg">
-              <AlertTriangle className="h-4 w-4 text-red-600 flex-shrink-0" />
-              <span className="text-sm text-red-700 font-medium">
-                Tem certeza?
-              </span>
+            <div className="flex flex-col gap-2 p-2 bg-red-50 border border-red-200 rounded-lg w-full">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-red-600 flex-shrink-0" />
+                <span className="text-sm text-red-700 font-medium">
+                  Tem certeza?
+                </span>
+              </div>
               <button
                 onClick={handleUnenroll}
                 disabled={unenrolling}
-                className="inline-flex items-center gap-1 px-3 py-1 bg-red-600 text-white text-sm font-semibold rounded hover:bg-red-700 transition disabled:opacity-50"
+                className="inline-flex w-full justify-center items-center gap-1 px-3 py-2 bg-red-600 text-white text-sm font-semibold rounded hover:bg-red-700 transition disabled:opacity-50"
               >
                 {unenrolling ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -251,7 +249,7 @@ export function EnrollButton({ course, onEnrolled }: EnrollButtonProps) {
               </button>
               <button
                 onClick={() => setConfirmUnenroll(false)}
-                className="px-3 py-1 bg-gray-200 text-gray-700 text-sm font-semibold rounded hover:bg-gray-300 transition"
+                className="w-full px-3 py-2 bg-gray-200 text-gray-700 text-sm font-semibold rounded hover:bg-gray-300 transition"
               >
                 Não
               </button>

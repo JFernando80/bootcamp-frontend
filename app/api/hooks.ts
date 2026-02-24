@@ -38,7 +38,9 @@ export function useActivitiesForModules(modules: ModuleDTO[] | undefined) {
         const resp = await activityService.list(1, [
           { key: "id", operation: "EQUAL", value: m.id!, classes: "module" },
         ]);
-        map[m.id!] = resp.body?.lista || [];
+        const lista = resp.body?.lista || [];
+        // Garantir FIFO na exibição: inverter a lista retornada pelo backend
+        map[m.id!] = lista.slice().reverse();
       }
       return map;
     },
