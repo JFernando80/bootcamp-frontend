@@ -165,6 +165,8 @@ export default function Course() {
     }
   }
 
+  // Note: backend now auto-creates user-module links on enrollment; no client-side creation needed.
+
   async function handleToggleActivity(activityId: string) {
     if (!isAuthenticated) {
       notify({
@@ -224,6 +226,8 @@ export default function Course() {
           { key: "userId", operation: "EQUAL", value: userId },
           { key: "activityId", operation: "EQUAL", value: activityId },
         ]);
+
+        // Backend will ensure user-module/user-activity relations; no client-side creation needed
 
         const existingInBackend = backendCheck.body?.lista?.[0];
 

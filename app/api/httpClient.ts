@@ -53,14 +53,6 @@ httpClient.interceptors.request.use(
       (config.headers as any)["Authorization"] = token;
     }
 
-    // Log para debug
-    console.log("📤 Request:", {
-      method: config.method?.toUpperCase(),
-      url: config.url,
-      headers: config.headers as any,
-      data: config.data,
-    });
-
     return config;
   },
   (error) => Promise.reject(error as AxiosError),
@@ -80,21 +72,9 @@ httpClient.interceptors.request.use(
  */
 httpClient.interceptors.response.use(
   (response: AxiosResponse) => {
-    console.log("✅ Response:", {
-      status: response.status,
-      url: response.config.url,
-      data: response.data,
-    });
     return response;
   },
   async (error: AxiosError) => {
-    console.error("❌ Error Response:", {
-      status: error.response?.status,
-      url: error.config?.url,
-      data: error.response?.data,
-      headers: error.response?.headers,
-    });
-
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
     };

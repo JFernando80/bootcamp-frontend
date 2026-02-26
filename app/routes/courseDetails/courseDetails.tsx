@@ -14,21 +14,16 @@ import {
   Loader2,
   HelpCircle,
   ExternalLink,
+  Play,
 } from "lucide-react";
 import {
   courseService,
-  // moduleService,
-  // activityService,
+  moduleService,
+  activityService,
   userCourseService,
-  // userActivityService,
-  // userModuleService,
+  userModuleService,
+  userActivityService,
 } from "~/api/services";
-import {
-  useModulesQuery,
-  useActivitiesForModules,
-  useUserProgressQuery,
-  useToggleActivityMutation,
-} from "~/api/hooks";
 import { useNotification } from "~/components/NotificationProvider";
 import { useAuthStore } from "~/stores/authStore";
 import type {
@@ -37,20 +32,27 @@ import type {
   ActivityDTO,
   UserCourseDTO,
   UserActivityDTO,
+  UserModuleDTO,
 } from "~/api/types";
 import Video from "../course/components/Video";
 
+// ─── COMPONENT ───────────────────────────────────────────────────────────────
+
 export default function CourseDetails() {
   const { courseId } = useParams();
-  const { isAuthenticated, userName, userId } = useAuthStore();
+  const { isAuthenticated, userId, userName } = useAuthStore();
   const navigate = useNavigate();
   const [processingActivity, setProcessingActivity] = useState<string | null>(
     null,
   );
+  
   const [course, setCourse] = useState<CourseDTO | null>(null);
   const [userCourse, setUserCourse] = useState<UserCourseDTO | null>(null);
   const [modules, setModules] = useState<ModuleDTO[]>([]);
   const [activities, setActivities] = useState<Record<string, ActivityDTO[]>>(
+    {},
+  );
+  const [userModules, setUserModules] = useState<Record<string, UserModuleDTO>>(
     {},
   );
   const [userActivities, setUserActivities] = useState<
@@ -64,115 +66,194 @@ export default function CourseDetails() {
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [quizAnswer, setQuizAnswer] = useState<number | null>(null);
 
-  const modulesQuery = useModulesQuery(courseId as string | undefined);
+  // Carrega dados do curso, módulos e atividades do backend
   useEffect(() => {
-    if (modulesQuery.data) setModules(modulesQuery.data);
-  }, [modulesQuery.data]);
+    if (!courseId) return;
+    let cancelled = false;
 
-  const activitiesQuery = useActivitiesForModules(modules);
-  useEffect(() => {
-    if (activitiesQuery.data) setActivities(activitiesQuery.data);
-  }, [activitiesQuery.data]);
+    async function loadData() {
+      try {
+        setLoading(true);
+        setError(null);
 
-  // Auto-select the first activity when data loads
-  useEffect(() => {
-    if (selectedActivityId) return;
-    for (const m of modules) {
-      const list = activities[m.id!] || [];
-      if (list.length > 0) {
-        setSelectedActivityId(list[0].id || null);
-        setSelectedModuleId(m.id || null);
-        break;
+        // 1 — Recuperar dados do curso
+        const courseData = await courseService.getById(courseId!);
+        if (cancelled) return;
+        if (!courseData) {
+          setError("Curso não encontrado");
+          return;
+        }
+        setCourse(courseData);
+
+        // 2 — Recuperar módulos do curso
+        const modulesResp = await moduleService.list(1, [
+          {
+            key: "id",
+            operation: "EQUAL",
+            value: courseId!,
+            classes: "course",
+          },
+        ]);
+        if (cancelled) return;
+        const moduleList: ModuleDTO[] = modulesResp.body?.lista || [];
+        moduleList.sort((a, b) => a.index - b.index);
+        setModules(moduleList);
+
+        // 3 — Recuperar atividades de cada módulo
+        const activitiesMap: Record<string, ActivityDTO[]> = {};
+        for (const mod of moduleList) {
+          const actResp = await activityService.list(1, [
+            {
+              key: "id",
+              operation: "EQUAL",
+              value: mod.id!,
+              classes: "module",
+            },
+            {
+              key: "id",
+              operation: "EQUAL",
+              value: courseId!,
+              classes: "course",
+            },
+          ]);
+          if (cancelled) return;
+          // Backend retorna em ordem inversa — reverter para FIFO
+          activitiesMap[mod.id!] = (actResp.body?.lista || [])
+            .slice()
+            .reverse();
+        }
+
+        console.log({ activitiesMap });
+        setActivities(activitiesMap);
+
+        // 4 — Recuperar inscrição do usuário no curso
+        if (userId) {
+          const ucResp = await userCourseService.list(1, [
+            { key: "id", operation: "EQUAL", value: userId, classes: "user" },
+          ]);
+          if (cancelled) return;
+          const enrollment = ucResp.body?.lista?.find(
+            (uc) => uc.courseId === courseId,
+          );
+          setUserCourse(enrollment || null);
+
+          // 5 — Recuperar módulos do usuário (filtrar também pelo curso atual)
+          const umResp = await userModuleService.list(1, [
+            { key: "id", operation: "EQUAL", value: userId, classes: "user" },
+            { key: "id", operation: "EQUAL", value: courseId!, classes: "course" },
+          ]);
+          if (cancelled) return;
+          const umMap: Record<string, UserModuleDTO> = {};
+          const moduleSet = new Set(moduleList.map((m) => m.id!));
+          (umResp.body?.lista || []).forEach((um) => {
+            if (um.moduleId && moduleSet.has(um.moduleId))
+              umMap[um.moduleId] = um;
+          });
+          setUserModules(umMap);
+
+          // 6 — Recuperar atividades do usuário
+          const uaResp = await userActivityService.list(1, [
+            { key: "id", operation: "EQUAL", value: userId, classes: "user" },
+            {
+              key: "id",
+              operation: "EQUAL",
+              value: courseId!,
+              classes: "course",
+            },
+          ]);
+          if (cancelled) return;
+          const uaMap: Record<string, UserActivityDTO> = {};
+          const allActivityIds = Object.values(activitiesMap)
+            .flat()
+            .map((a) => a.id!)
+            .filter(Boolean);
+          const activitySet = new Set(allActivityIds);
+          (uaResp.body?.lista || []).forEach((ua) => {
+            if (ua.activityId && activitySet.has(ua.activityId))
+              uaMap[ua.activityId] = ua;
+          });
+          setUserActivities(uaMap);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Erro ao carregar curso:", err);
+          setError("Erro ao carregar dados do curso");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     }
-  }, [modules, activities]);
+
+    loadData();
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId]);
+
+  // Auto-select: scan modules in order and pick the first activity not yet finalized
+  useEffect(() => {
+    if (selectedActivityId) return;
+    // wait until all data is loaded so we have userActivities available
+    if (loading) return;
+    if (modules.length === 0) return;
+
+    for (const mod of modules) {
+      const list = activities[mod.id!] || [];
+      if (list.length === 0) continue;
+      // find first activity in this module that's NOT finalized
+      const idx = list.findIndex((a) => userActivities[a.id!]?.status !== "FINALIZADO");
+      if (idx >= 0) {
+        setSelectedActivityId(list[idx].id || null);
+        setSelectedModuleId(mod.id || null);
+        return;
+      }
+      // if all activities in this module are finalized, continue to next module
+    }
+
+    // If all activities in all modules are finalized, default to the last activity
+    const lastModule = modules[modules.length - 1];
+    const lastList = activities[lastModule.id!] || [];
+    if (lastList.length > 0) {
+      const lastActivity = lastList[lastList.length - 1];
+      setSelectedActivityId(lastActivity.id || null);
+      setSelectedModuleId(lastModule.id || null);
+    }
+  }, [modules, activities, userActivities, selectedActivityId, loading]);
 
   // Reset quiz answer when switching activities
   useEffect(() => {
     setQuizAnswer(null);
   }, [selectedActivityId]);
 
-  const moduleIds = modules.map((m) => m.id!).filter(Boolean);
   const activityIds = Object.values(activities)
     .flat()
     .map((a) => a.id!)
     .filter(Boolean);
-  const userProgressQuery = useUserProgressQuery(
-    userId ?? undefined,
-    moduleIds,
-    activityIds,
-  );
-  useEffect(() => {
-    if (userProgressQuery.data) {
-      setUserActivities(userProgressQuery.data.userActivities || {});
-    }
-  }, [userProgressQuery.data]);
 
-  const toggleActivity = useToggleActivityMutation();
   const { notify } = useNotification();
 
-  // True while progress data is being fetched — used to suppress the visual flash
-  // where activities appear without completion status before userProgressQuery resolves
-  const progressLoading =
-    activityIds.length > 0 &&
-    (userProgressQuery.isLoading || userProgressQuery.isFetching);
+  const progressLoading = false;
 
-  useEffect(() => {
-    loadCourseData();
-  }, [courseId]);
+  // Verifica se o usuário está inscrito no módulo selecionado
+  const isModuleStarted = selectedModuleId
+    ? !!userModules[selectedModuleId]
+    : false;
 
-  async function loadCourseData() {
-    if (!courseId) return;
-
-    // Verificar autenticação
-    if (!isAuthenticated || !userId) {
-      navigate("/login");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Carregar curso
-      const courseData = await courseService.getById(courseId);
-      if (!courseData) {
-        setError("Curso não encontrado");
-        return;
-      }
-      setCourse(courseData);
-
-      // Verificar se o usuário está inscrito no curso
-      const userCourseResponse = await userCourseService.list(1, [
-        { key: "id", operation: "EQUAL", value: userId, classes: "user" },
-      ]);
-
-      const enrollmentData = userCourseResponse.body?.lista?.find(
-        (uc) => uc.courseId === courseId,
-      );
-
-      if (!enrollmentData) {
-        // Usuário não está inscrito, redirecionar para página de preview
-        navigate(`/courses/${courseId}`);
-        return;
-      }
-      setUserCourse(enrollmentData);
-
-      // modules and activities are loaded via react-query hooks
-    } catch (err) {
-      console.error("Erro ao carregar curso:", err);
-      setError("Erro ao carregar dados do curso");
-    } finally {
-      setLoading(false);
-    }
-  }
+  // Note: backend now auto-creates user-module and user-activity links on enrollment.
 
   async function handleToggleActivity(
     activityId: string,
     moduleId?: string,
     answerJson?: string | null,
   ) {
-    if (!userId) return;
+    if (!userId) {
+      notify({
+        type: "info",
+        message: "Faça login para marcar atividades como concluídas",
+      });
+      return;
+    }
+
     const activity = moduleId
       ? activities[moduleId]?.find((a) => a.id === activityId)
       : Object.values(activities)
@@ -180,40 +261,176 @@ export default function CourseDetails() {
           .find((a) => a.id === activityId);
     if (!activity) return;
 
-    const userActivityId = userActivities[activityId]?.id;
     setProcessingActivity(activityId);
+    try {
+      // backend will guarantee user_module/user_activity links
 
-    console.log({ activityId, userActivityId, activity });
+      const existing = userActivities[activityId];
+      const payload = {
+        attemptNumber: existing?.attemptNumber ?? 1,
+        answerJson: answerJson ?? existing?.answerJson ?? null,
+        score: existing?.score || activity.maxScore || 0,
+        submittedAtS: new Date().toLocaleDateString("pt-BR"),
+        status: "FINALIZADO",
+        userId,
+        userName: userName || "Usuário",
+        activityId,
+        activityType: activity.type,
+        moduleId: activity.moduleId,
+        moduleDescription: activity.moduleDescription,
+      };
 
-    toggleActivity.mutate(
-      {
-        userId: userId!,
-        userName: userName || undefined,
-        activity,
-        answerJson: answerJson ?? null,
-      },
-      {
-        onSuccess: () => {
-          notify({
-            type: "success",
-            message: "Atividade marcada como concluída!",
+      if (existing && existing.id) {
+        // Já existe no estado local (foi buscado no carregamento) → PUT
+        const newStatus =
+          existing.status === "FINALIZADO" ? "EM_ANDAMENTO" : "FINALIZADO";
+        await userActivityService.update(existing.id, {
+          ...payload,
+          status: newStatus,
+          submittedAtS:
+            newStatus === "FINALIZADO"
+              ? new Date().toLocaleDateString("pt-BR")
+              : null,
+        });
+        if (newStatus === "FINALIZADO") {
+          setUserActivities((prev) => ({
+            ...prev,
+            [activityId]: { ...existing, status: "FINALIZADO" },
+          }));
+        } else {
+          setUserActivities((prev) => {
+            const updated = { ...prev };
+            delete updated[activityId];
+            return updated;
           });
-        },
-        onError: (err: any) => {
-          notify({
-            type: "error",
-            message:
-              err?.response?.data?.message ||
-              err?.message ||
-              "Erro ao marcar atividade como concluída.",
-          });
-        },
-        onSettled: () => {
-          setProcessingActivity(null);
-          userProgressQuery.refetch?.();
-        },
-      },
-    );
+        }
+      } else {
+        // Não existe no estado local → tentar POST, fallback para list + PUT
+        try {
+          const created = await userActivityService.create(payload);
+          setUserActivities((prev) => ({
+            ...prev,
+            [activityId]: {
+              ...payload,
+              id: created.body?.id,
+            } as UserActivityDTO,
+          }));
+        } catch (createErr: any) {
+          // Já existe no backend → buscar e fazer PUT
+          const fallback = await userActivityService.list(1, [
+            { key: "id", operation: "EQUAL", value: userId, classes: "user" },
+            {
+              key: "id",
+              operation: "EQUAL",
+              value: activityId,
+              classes: "activity",
+            },
+          ]);
+          const found = fallback.body?.lista?.[0];
+          if (found && found.id) {
+            await userActivityService.update(found.id, payload);
+            setUserActivities((prev) => ({
+              ...prev,
+              [activityId]: { ...found, ...payload },
+            }));
+          } else {
+            throw createErr;
+          }
+        }
+      }
+      notify({ type: "success", message: "Atividade marcada como concluída!" });
+    } catch (err: any) {
+      console.error("Erro ao atualizar atividade:", err);
+      notify({
+        type: "error",
+        message: err?.message || "Erro ao atualizar atividade.",
+      });
+    } finally {
+      setProcessingActivity(null);
+    }
+  }
+
+  async function submitQuiz(answerJson?: string | null) {
+    if (!userId || !selectedActivityId) return;
+
+    const activity = Object.values(activities)
+      .flat()
+      .find((a) => a.id === selectedActivityId);
+    if (!activity) return;
+
+    setProcessingActivity(selectedActivityId);
+    try {
+      // backend will guarantee user_module/user_activity links
+
+      const existing = userActivities[selectedActivityId];
+      const payload = {
+        attemptNumber: existing?.attemptNumber ?? 1,
+        answerJson: answerJson ?? existing?.answerJson ?? null,
+        score: existing?.score ?? 0,
+        submittedAtS: new Date().toLocaleDateString("pt-BR"),
+        status: "FINALIZADO",
+        userId,
+        userName: userName || "Usuário",
+        activityId: selectedActivityId,
+        activityType: activity.type,
+        moduleId: activity.moduleId,
+        moduleDescription: activity.moduleDescription,
+      };
+
+      if (existing && existing.id) {
+        // Já existe no estado local (buscado no carregamento) → PUT
+        await userActivityService.update(existing.id, payload);
+        setUserActivities((prev) => ({
+          ...prev,
+          [selectedActivityId]: {
+            ...existing,
+            ...payload,
+          },
+        }));
+      } else {
+        // Não existe no estado local → tentar POST, fallback para list + PUT
+        try {
+          const created = await userActivityService.create(payload);
+          setUserActivities((prev) => ({
+            ...prev,
+            [selectedActivityId]: {
+              ...payload,
+              id: created.body?.id,
+            } as UserActivityDTO,
+          }));
+        } catch (createErr: any) {
+          // Já existe no backend → buscar e fazer PUT
+          const fallback = await userActivityService.list(1, [
+            { key: "id", operation: "EQUAL", value: userId, classes: "user" },
+            {
+              key: "id",
+              operation: "EQUAL",
+              value: selectedActivityId,
+              classes: "activity",
+            },
+          ]);
+          const found = fallback.body?.lista?.[0];
+          if (found && found.id) {
+            await userActivityService.update(found.id, payload);
+            setUserActivities((prev) => ({
+              ...prev,
+              [selectedActivityId]: { ...found, ...payload },
+            }));
+          } else {
+            throw createErr;
+          }
+        }
+      }
+      notify({ type: "success", message: "Resposta submetida com sucesso!" });
+    } catch (err: any) {
+      console.error("Erro ao submeter quiz:", err);
+      notify({
+        type: "error",
+        message: err?.message || "Erro ao submeter quiz.",
+      });
+    } finally {
+      setProcessingActivity(null);
+    }
   }
 
   function getActivityCategory(
@@ -232,6 +449,24 @@ export default function CourseDetails() {
     if (cat === "QUIZ") return "Quiz";
     if (cat === "READING") return "Leitura";
     return type;
+  }
+
+  // Determine if a module should be unlocked: the first module is unlocked,
+  // Determine if a module should be unlocked: the first module is unlocked.
+  // Otherwise, all earlier modules must have all their activities finalized.
+  function isModuleUnlocked(module: ModuleDTO) {
+    const idx = modules.findIndex((m) => m.id === module.id);
+    if (idx <= 0) return true;
+
+    for (let i = 0; i < idx; i++) {
+      const prev = modules[i];
+      const prevActs = activities[prev.id!] || [];
+      // If a previous module has no activities, treat it as completed
+      if (prevActs.length === 0) continue;
+      const allDone = prevActs.every((a) => userActivities[a.id!]?.status === "FINALIZADO");
+      if (!allDone) return false;
+    }
+    return true;
   }
 
   if (loading) {
@@ -481,9 +716,7 @@ export default function CourseDetails() {
                             ) : (
                               <button
                                 onClick={() =>
-                                  handleToggleActivity(
-                                    selectedActivityId!,
-                                    selectedModuleId || undefined,
+                                  submitQuiz(
                                     quizAnswer !== null
                                       ? JSON.stringify({ selected: quizAnswer })
                                       : null,
@@ -691,14 +924,24 @@ export default function CourseDetails() {
               <div className="space-y-4">
                 {modules.map((module) => {
                   const moduleActivities = activities[module.id!] || [];
+                  const userModule = userModules[module.id!];
+                  const moduleStarted = !!userModule;
+                  const locked = !isModuleUnlocked(module);
 
                   return (
                     <div
                       key={module.id}
-                      className="border border-gray-200 rounded-lg p-4"
+                      title={locked ? "Para iniciar esse módulo você precisa concluir o anterior" : undefined}
+                      className={`border border-gray-200 rounded-lg p-4 ${locked ? 'opacity-60 cursor-not-allowed' : ''}`}
                     >
                       <div className="flex items-start gap-3 mb-3">
-                        <span className="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-700 font-bold rounded-full text-sm flex-shrink-0">
+                        <span
+                          className={`inline-flex items-center justify-center w-8 h-8 font-bold rounded-full text-sm flex-shrink-0 ${
+                            moduleStarted
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-gray-100 text-gray-500"
+                          }`}
+                        >
                           {module.index}
                         </span>
                         <div className="flex-1 min-w-0">
@@ -708,6 +951,8 @@ export default function CourseDetails() {
                           <p className="text-xs text-gray-600 line-clamp-2">
                             {module.description}
                           </p>
+                          {/* Removed start module control — backend now creates user-module/activity links on enrollment */}
+                          {/* removed 'Módulo iniciado' label per design */}
                         </div>
                       </div>
 
@@ -738,14 +983,20 @@ export default function CourseDetails() {
                               <button
                                 key={activity.id}
                                 onClick={() => {
+                                  if (locked) {
+                                    notify({ type: "info", message: "Conclua o módulo anterior para acessar estas atividades." });
+                                    return;
+                                  }
+                                  console.log("Selected activity:", activity);
                                   setSelectedActivityId(activity.id!);
                                   setSelectedModuleId(module.id!);
                                 }}
+                                disabled={locked}
                                 className={`w-full flex items-center gap-2 p-2 rounded-lg transition text-left border ${
                                   isSelected
                                     ? "bg-blue-50 border-blue-200"
                                     : "border-transparent hover:bg-gray-50"
-                                }`}
+                                } ${locked ? 'opacity-50 cursor-not-allowed' : ''}`}
                               >
                                 <span
                                   className={

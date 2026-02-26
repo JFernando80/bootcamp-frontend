@@ -108,14 +108,21 @@ export const userModuleService = {
   async start(
     userId: string,
     moduleId: string,
+    moduleTitle?: string,
+    userName?: string,
   ): Promise<JsonResponse<UserModuleDTO>> {
-    return this.create({
+    // Build DTO matching backend `UserModuleDTO` structure
+    const body: Partial<UserModuleDTO> = {
       userId,
+      userName: userName || undefined,
       moduleId,
+      moduleTitle: moduleTitle || moduleId,
       status: "IN_PROGRESS",
-      progress: 0,
-      startedAt: new Date().toISOString(),
-    });
+      // Backend expects date in dd/MM/yyyy format
+      startedAtS: new Date().toLocaleDateString("pt-BR"),
+    } as any;
+
+    return this.create(body as UserModuleDTO);
   },
 
   /**

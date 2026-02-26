@@ -109,12 +109,6 @@ export const courseService = {
     page: number = 1,
     filters?: SearchCriteriaDTO[],
   ): Promise<JsonResponse<PaginatedResponse<CourseDTO>>> {
-    console.log(
-      "courseService.list - Página:",
-      page,
-      "Filtros:",
-      JSON.stringify(filters, null, 2),
-    );
     return apiPost<
       JsonResponse<PaginatedResponse<CourseDTO>>,
       SearchCriteriaDTO[]
@@ -132,62 +126,41 @@ export const courseService = {
           id,
         );
 
-      console.log(`🔍 Buscando curso por ${isUUID ? "UUID" : "slug"}:`, id);
+      // Buscar sempre usando o endpoint de listagem com filtro.
+      // Se o backend não aplicar corretamente o filtro, fazemos um fallback
+      // local procurando pelo `id` ou `slug` no resultado e iterando páginas.
+      const filters = isUUID
+        ? [{ key: "id", operation: "EQUAL", value: id }]
+        : [{ key: "slug", operation: "EQUAL", value: id }];
 
-      if (isUUID) {
-        // Se é UUID, buscar todos e filtrar no cliente (backend não suporta filtro por UUID)
-        console.log("⚠️ UUID detectado, buscando todos os cursos...");
-        const response = await this.list(1, []);
-
-        console.log(
-          "📚 Total de cursos retornados:",
-          response.body?.lista.length,
+      const response = await this.list(1, filters);
+      if (response.body && Array.isArray(response.body.lista)) {
+        // Tentar encontrar exato no primeiro pacote
+        const found = response.body.lista.find((c: any) =>
+          isUUID ? c.id === id : c.slug === id,
         );
+        if (found) return found;
 
-        // Filtrar no cliente
-        const course = response.body?.lista.find((c) => c.id === id);
-
-        if (course) {
-          console.log("✅ Curso encontrado:", course);
-          return course;
-        }
-
-        // Se não encontrou na primeira página, tentar buscar mais páginas
-        if (response.body && response.body.total > response.body.lista.length) {
-          console.log("🔄 Buscando próximas páginas...");
-          const totalPages = Math.ceil(
-            response.body.total / response.body.lista.length,
-          );
-
+        // Se não encontrou e existe paginação, varrer páginas procurando
+        const pageSize = response.body.lista.length || 0;
+        const total = response.body.total || 0;
+        if (pageSize > 0 && total > pageSize) {
+          const totalPages = Math.ceil(total / pageSize);
           for (let page = 2; page <= totalPages; page++) {
-            const pageResponse = await this.list(page, []);
-            const foundCourse = pageResponse.body?.lista.find(
-              (c) => c.id === id,
+            const pageResp = await this.list(page, filters);
+            const pageFound = pageResp.body?.lista?.find((c: any) =>
+              isUUID ? c.id === id : c.slug === id,
             );
-            if (foundCourse) {
-              console.log("✅ Curso encontrado na página", page);
-              return foundCourse;
-            }
+            if (pageFound) return pageFound;
           }
         }
 
-        console.log("⚠️ Curso não encontrado");
-        return null;
-      } else {
-        // Se não é UUID, buscar por slug normalmente
-        console.log("📝 Buscando por slug...");
-        const response = await this.list(1, [
-          { key: "slug", operation: "EQUAL", value: id },
-        ]);
-
-        if (response.body && response.body.lista.length > 0) {
-          console.log("✅ Curso encontrado:", response.body.lista[0]);
-          return response.body.lista[0];
-        }
-
-        console.log("⚠️ Curso não encontrado");
-        return null;
+        // Se não encontrou nada correspondente, mas recebeu algum resultado,
+        // retornar o primeiro item como fallback (comportamento anterior simplificado)
+        if (response.body.lista.length > 0) return response.body.lista[0];
       }
+
+      return null;
     } catch (error) {
       console.error("❌ Erro ao buscar curso:", error);
       return null;

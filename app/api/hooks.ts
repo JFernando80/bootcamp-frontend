@@ -76,10 +76,6 @@ export function useUserProgressQuery(
       ]);
       const activitiesList: UserActivityDTO[] =
         activitiesResp.body?.lista || [];
-      console.log(
-        "[useUserProgressQuery] user_activity filtro result:",
-        activitiesResp.body,
-      );
       const activitySet = new Set(activityIds || []);
       activitiesList.forEach((ua) => {
         if (ua.activityId && activitySet.has(ua.activityId))
@@ -120,7 +116,6 @@ export function useToggleActivityMutation() {
       activity: ActivityDTO;
       answerJson?: string | null;
     }) => {
-      // Filtra por userId E activityId ao mesmo tempo — retorna no máximo 1 registro
       const resp = await userActivityService.list(1, [
         { key: "id", operation: "EQUAL", value: userId, classes: "user" },
         {
@@ -131,6 +126,51 @@ export function useToggleActivityMutation() {
         },
       ]);
       const record = (resp.body?.lista || [])[0] ?? null;
+
+      // Garantir que exista user_module para este usuário e módulo antes de manipular user_activity
+      try {
+        const moduleId = activity.moduleId;
+        if (moduleId) {
+          console.debug(
+            "useToggleActivityMutation: checking user_module for user",
+            userId,
+            "module",
+            moduleId,
+          );
+          const umCheck = await userModuleService.list(1, [
+            {
+              key: "userId",
+              operation: "EQUAL",
+              value: userId,
+              classes: "user",
+            },
+            { key: "moduleId", operation: "EQUAL", value: moduleId },
+          ]);
+          const existingUM = umCheck.body?.lista?.[0];
+          if (!existingUM) {
+            // Prefer a human-readable module title when available
+            const moduleTitle =
+              (activity as any)?.moduleDescription || moduleId;
+            console.debug(
+              "useToggleActivityMutation: creating user_module for user",
+              userId,
+              "module",
+              moduleId,
+            );
+            await userModuleService.start(
+              userId,
+              moduleId,
+              moduleTitle,
+              userName,
+            );
+          }
+        }
+      } catch (e) {
+        console.error(
+          "Erro ao garantir user_module antes de toggleActivity:",
+          e,
+        );
+      }
 
       const body = {
         attemptNumber: null as null,
@@ -146,6 +186,12 @@ export function useToggleActivityMutation() {
         moduleDescription: activity.moduleDescription,
       };
 
+      console.debug(
+        "useToggleActivityMutation: creating/updating user_activity for",
+        userId,
+        "activity",
+        activity.id,
+      );
       if (record?.id) {
         await userActivityService.update(record.id, body);
       } else {

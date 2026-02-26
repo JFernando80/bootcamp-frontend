@@ -103,22 +103,13 @@ export async function loginUser(form: LoginBody): Promise<JsonResponse> {
     { headers: { token: securityId } },
   );
 
-  console.log("🔑 Login Response completa:", resp.data);
-  console.log("🔑 Response statusCode:", resp.data.statusCode);
-  console.log("🔑 Response body:", resp.data.body);
-  console.log("🔑 Response message:", resp.data.message);
-
   if (resp.data.statusCode === 200 && resp.data.message) {
     // O JWT vem no campo MESSAGE, não no body!
     const jwtToken = resp.data.message;
 
-    console.log("🔓 JWT Token:", jwtToken);
-
     try {
       // Decodificar JWT para extrair dados
       const jwtData = parseJwt(jwtToken);
-      console.log("🔓 JWT Decoded:", jwtData);
-      console.log("🔍 Todas as chaves do JWT:", Object.keys(jwtData));
 
       // A estrutura do JWT é diferente - dados estão no nível raiz
       const token = jwtData.token?.token; // token.token
@@ -135,32 +126,6 @@ export async function loginUser(form: LoginBody): Promise<JsonResponse> {
         jwtData.jti ||
         jwtData.token?.userId ||
         jwtData.user?.id;
-
-      console.log("✅ Token:", token);
-      console.log("✅ RefreshToken:", refreshToken);
-      console.log("✅ UserName:", userName);
-      console.log("✅ UserEmail:", userEmail);
-      console.log("✅ IsAdmin:", isAdmin);
-      console.log("✅ UserId:", userId);
-      console.log("🔍 Tentativas userId:", {
-        id: jwtData.id,
-        userId: jwtData.userId,
-        user_id: jwtData.user_id,
-        jti: jwtData.jti,
-        tokenUserId: jwtData.token?.userId,
-        userDotId: jwtData.user?.id,
-      });
-
-      console.log("💾 Salvando no store:", {
-        token,
-        sessionId: undefined,
-        publicKey: undefined,
-        userName,
-        userEmail,
-        isAdmin,
-        refreshToken,
-        userId,
-      });
 
       // Calcular ttlMinutes com base no claim `exp` do JWT (se disponível)
       let ttlMinutes: number | undefined = undefined;
@@ -193,11 +158,9 @@ export async function loginUser(form: LoginBody): Promise<JsonResponse> {
       // Se o userId não foi encontrado no JWT, buscar via API.
       // Também, se o JWT não trouxe o campo `administrador`, usar o valor do usuário retornado.
       if (!userId) {
-        console.log("🔍 UserId não encontrado no JWT, buscando via API...");
         try {
           const user = await userService.getByEmail(userEmail);
           if (user && user.id) {
-            console.log("✅ UserId encontrado via API:", user.id);
             // Determinar isAdmin final: priorizar o JWT, mas aceitar o valor do usuário se necessário
             const isAdminFromUser = !!user.administrador;
             const finalIsAdmin = isAdmin || isAdminFromUser;
@@ -228,9 +191,6 @@ export async function loginUser(form: LoginBody): Promise<JsonResponse> {
           try {
             const user = await userService.getByEmail(userEmail);
             if (user && user.administrador) {
-              console.log(
-                "🔍 Atualizando isAdmin a partir da API (user.administrador)",
-              );
               useAuthStore
                 .getState()
                 .login(
@@ -253,15 +213,6 @@ export async function loginUser(form: LoginBody): Promise<JsonResponse> {
 
       // Verificar se foi salvo
       const state = useAuthStore.getState();
-      console.log("✅ Estado após login:", {
-        isAuthenticated: state.isAuthenticated,
-        token: state.token,
-        refreshToken: state.refreshToken,
-        sessionId: state.sessionId,
-        userName: state.userName,
-        userEmail: state.userEmail,
-        userId: state.userId,
-      });
     } catch (error) {
       console.error("❌ Erro ao processar JWT:", error);
       console.error("❌ JWT que causou erro:", jwtToken);
@@ -426,16 +377,12 @@ export async function refreshToken(refreshToken: string): Promise<any> {
         userId || undefined,
       );
 
-    console.log("🔄 Token atualizado via refresh_token");
     // Se o flag isAdmin não estiver definido/true, tentar obter via API pelo email salvo
     try {
       const current = useAuthStore.getState();
       if (!current.isAdmin && current.userEmail) {
         const user = await userService.getByEmail(current.userEmail);
         if (user && user.administrador) {
-          console.log(
-            "🔍 Atualizando isAdmin via refreshToken a partir da API (user.administrador)",
-          );
           useAuthStore
             .getState()
             .login(
