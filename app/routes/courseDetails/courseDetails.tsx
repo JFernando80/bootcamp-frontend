@@ -32,11 +32,14 @@ export default function CourseDetails() {
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [certificateToShow, setCertificateToShow] =
     useState<CertificateData | null>(null);
+  const [certificateTokenFromComplete, setCertificateTokenFromComplete] =
+    useState<string | null>(null);
   const hasShownCompletionModal = useRef(false);
 
   // Reset ao trocar de curso
   useEffect(() => {
     hasShownCompletionModal.current = false;
+    setCertificateTokenFromComplete(null);
   }, [courseId]);
 
   const {
@@ -99,9 +102,11 @@ export default function CourseDetails() {
       if (userCourse.status !== "COMPLETED") {
         userCourseService
           .complete(userCourse.id)
-          .then(() =>
-            queryClient.invalidateQueries({ queryKey: ["enrollment"] }),
-          )
+          .then((resp) => {
+            const token = resp.body?.certificateToken;
+            if (token) setCertificateTokenFromComplete(token);
+            queryClient.invalidateQueries({ queryKey: ["enrollment"] });
+          })
           .catch(() => {});
       }
     }
@@ -110,12 +115,15 @@ export default function CourseDetails() {
   const handleGetCertificate = () => {
     setShowCompletionModal(false);
     if (course && courseId && userId && userName) {
+      const token =
+        certificateTokenFromComplete ?? userCourse?.certificateToken;
       const certificate = buildCertificateData({
         courseName: course.title,
         userName,
         courseId,
         userId,
         completedAt: userCourse?.completedAt,
+        certificateToken: token,
       });
       setCertificateToShow(certificate);
     }

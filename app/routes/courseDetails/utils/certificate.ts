@@ -16,8 +16,9 @@ export function buildCertificateData(params: {
   courseId: string;
   userId: string;
   completedAt?: string | null;
+  certificateToken?: string | null;
 }): CertificateData {
-  const { courseName, userName, courseId, userId, completedAt } = params;
+  const { courseName, userName, courseId, userId, completedAt, certificateToken } = params;
   return {
     nome: courseName,
     userName,
@@ -26,5 +27,6 @@ export function buildCertificateData(params: {
       ? new Date(completedAt).toLocaleDateString("pt-BR")
       : new Date().toLocaleDateString("pt-BR"),
     hashAutenticacao: buildCertificateHash(userId, courseId),
+    certificateToken: certificateToken ?? undefined,
   };
 }

@@ -10,6 +10,8 @@ import {
   userActivityService,
   moduleService,
   activityService,
+  openCertificate,
+  getCertificateToken,
 } from "~/api/services";
 import { useAuthStore } from "~/stores/authStore";
 
@@ -30,6 +32,7 @@ export default function CertificatesRoute() {
   const [loading, setLoading] = useState(true);
   const [selectedCertificate, setSelectedCertificate] =
     useState<CertificateData | null>(null);
+  const [openingToken, setOpeningToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userId) {
@@ -115,12 +118,19 @@ export default function CertificatesRoute() {
             ? new Date(uc.completedAt).toLocaleDateString("pt-BR")
             : new Date().toLocaleDateString("pt-BR");
 
+          let token =
+            uc.certificateToken ??
+            (uc as { certificate_token?: string }).certificate_token;
+          if (!token && uc.id) {
+            token = (await getCertificateToken(uc.id)) ?? undefined;
+          }
           return {
             nome: courseName,
             userName: userName || "Usuário",
             emissor: "Bootcamp",
             dataEmissao: date,
             hashAutenticacao: buildHash(userId!, uc.courseId),
+            certificateToken: token ?? undefined,
           } satisfies CertificateData;
         }),
       );
@@ -169,10 +179,29 @@ export default function CertificatesRoute() {
                   </p>
                 </div>
                 <button
-                  onClick={() => setSelectedCertificate(cert)}
-                  className="text-sm font-medium border border-blue-600 text-blue-600 rounded-md px-3 h-8 hover:bg-blue-600 hover:text-white transition-all flex-shrink-0"
+                  onClick={async () => {
+                    if (cert.certificateToken) {
+                      setOpeningToken(cert.certificateToken);
+                      try {
+                        await openCertificate(cert.certificateToken);
+                      } catch (err) {
+                        console.error("Erro ao abrir certificado:", err);
+                        setSelectedCertificate(cert);
+                      } finally {
+                        setOpeningToken(null);
+                      }
+                    } else {
+                      setSelectedCertificate(cert);
+                    }
+                  }}
+                  disabled={!!openingToken}
+                  className="text-sm font-medium border border-blue-600 text-blue-600 rounded-md px-3 h-8 hover:bg-blue-600 hover:text-white transition-all flex-shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Visualizar
+                  {openingToken === cert.certificateToken ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    "Visualizar"
+                  )}
                 </button>
               </div>
             </div>

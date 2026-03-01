@@ -4,6 +4,7 @@ export * from "./courseService";
 export * from "./moduleService";
 export * from "./activityService";
 export * from "./userCourseService";
+export * from "./certificateService";
 export * from "./userModuleService";
 export * from "./userActivityService";
 export * from "./userService";

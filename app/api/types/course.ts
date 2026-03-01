@@ -51,6 +51,7 @@ export interface UserCourseDTO {
   completedAt?: string;
   createdAt?: string;
   updatedAt?: string;
+  certificateToken?: string;
 }
 
 export interface UserModuleDTO {

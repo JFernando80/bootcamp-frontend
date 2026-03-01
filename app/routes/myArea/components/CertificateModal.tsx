@@ -1,5 +1,6 @@
-import React from "react";
-import { Download, X } from "lucide-react";
+import React, { useState } from "react";
+import { Download, X, Loader2 } from "lucide-react";
+import { openCertificate } from "~/api/services/certificateService";
 
 export type CertificateData = {
   nome: string; // course name
@@ -8,6 +9,7 @@ export type CertificateData = {
   dataEmissao: string;
   cargaHoraria?: string;
   hashAutenticacao: string;
+  certificateToken?: string; // token para GET /certificate
 };
 
 type Props = {
@@ -16,7 +18,25 @@ type Props = {
 };
 
 export const CertificateModal: React.FC<Props> = ({ certificate, onClose }) => {
-  const handleDownload = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleDownload = async () => {
+    if (certificate.certificateToken) {
+      setLoading(true);
+      setError(null);
+      try {
+        await openCertificate(certificate.certificateToken);
+      } catch (err) {
+        setError(
+          (err as Error)?.message || "Erro ao abrir certificado. Tente novamente.",
+        );
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
@@ -148,6 +168,7 @@ export const CertificateModal: React.FC<Props> = ({ certificate, onClose }) => {
     printWindow.document.close();
   };
 
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
@@ -202,16 +223,28 @@ export const CertificateModal: React.FC<Props> = ({ certificate, onClose }) => {
           </div>
 
           <div className="text-center mt-8">
+            {error && (
+              <p className="text-sm text-red-600 mb-2">{error}</p>
+            )}
             <button
               onClick={handleDownload}
-              className="inline-flex items-center justify-center gap-2 rounded-md text-base font-medium h-12 px-8 bg-green-600 hover:bg-green-700 text-white shadow-md transition"
+              disabled={loading}
+              className="inline-flex items-center justify-center gap-2 rounded-md text-base font-medium h-12 px-8 bg-green-600 hover:bg-green-700 text-white shadow-md transition disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <Download className="h-5 w-5" />
-              Baixar Certificado (PDF)
+              {loading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Download className="h-5 w-5" />
+              )}
+              {certificate.certificateToken
+                ? "Abrir Certificado"
+                : "Baixar Certificado (PDF)"}
             </button>
-            <p className="text-xs text-gray-400 mt-2">
-              Será aberta uma janela de impressão — selecione "Salvar como PDF"
-            </p>
+            {!certificate.certificateToken && (
+              <p className="text-xs text-gray-400 mt-2">
+                Será aberta uma janela de impressão — selecione &quot;Salvar como PDF&quot;
+              </p>
+            )}
           </div>
         </div>
       </div>
