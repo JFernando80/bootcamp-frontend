@@ -21,6 +21,7 @@ import { useAuthStore } from "~/stores/authStore";
 import {
   getActivityCategory,
   getActivityLabel,
+  sortActivitiesByType,
 } from "~/routes/courseDetails/utils";
 
 export default function ManageCourseDetail() {
@@ -100,7 +101,7 @@ export default function ManageCourseDetail() {
           },
         ]);
         const lista = activitiesResponse.body?.lista || [];
-        activitiesMap[module.id!] = lista.slice().reverse();
+        activitiesMap[module.id!] = sortActivitiesByType(lista);
       }
       setActivities(activitiesMap);
     } catch (err: any) {

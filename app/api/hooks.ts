@@ -15,6 +15,7 @@ import type {
   CourseDTO,
   UserCourseDTO,
 } from "~/api/types";
+import { sortActivitiesByType } from "~/routes/courseDetails/utils";
 
 /** Busca um curso por ID ou slug. */
 export function useCourseQuery(courseId?: string) {
@@ -104,8 +105,7 @@ export function useActivitiesForModules(modules: ModuleDTO[] | undefined) {
           { key: "id", operation: "EQUAL", value: m.id!, classes: "module" },
         ]);
         const lista = resp.body?.lista || [];
-        // Garantir FIFO na exibição: inverter a lista retornada pelo backend
-        map[m.id!] = lista.slice().reverse();
+        map[m.id!] = sortActivitiesByType(lista);
       }
       return map;
     },

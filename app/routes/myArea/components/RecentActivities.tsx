@@ -149,8 +149,6 @@ const RecentActivities = () => {
                   </p>
                   <p className="text-xs text-gray-500">
                     {formatDate(activity.completedAt || activity.startedAt)}
-                    {activity.score !== undefined &&
-                      ` • Pontuação: ${activity.score}`}
                   </p>
                 </div>
               </div>

@@ -1,6 +1,6 @@
-# Configuração do Firebase Storage (Upload de Vídeos)
+# Configuração do Firebase (Storage e Firestore)
 
-O upload de vídeos usa Firebase Storage. Siga os passos para configurar.
+O upload de vídeos usa Firebase Storage. URLs longas são armazenadas no Firestore para respeitar o limite de 150 caracteres do backend.
 
 ## 1. Criar projeto no Firebase
 
@@ -8,7 +8,9 @@ O upload de vídeos usa Firebase Storage. Siga os passos para configurar.
 2. Crie um novo projeto ou use um existente
 3. No menu lateral, vá em **Build** → **Storage**
 4. Clique em **Começar** e siga o assistente
-5. Escolha as regras de segurança (em produção, restrinja por autenticação)
+5. No menu lateral, vá em **Build** → **Firestore Database**
+6. Clique em **Criar banco de dados** (modo produção ou teste)
+7. Escolha as regras de segurança (em produção, restrinja por autenticação)
 
 ## 2. Obter as credenciais
 
@@ -56,3 +58,4 @@ Por enquanto, use as mesmas regras. Em produção com muitos usuários, consider
 - Se estiver configurado: o usuário pode escolher entre "URL do vídeo" ou "Fazer upload"
 - Vídeos são salvos em `videos/{userId}/{moduleId}/{timestamp}.{ext}`
 - Formatos aceitos: MP4, WebM, OGG (máx. 500MB)
+- URLs longas do Storage são armazenadas na coleção `videoRefs` do Firestore (limite de 150 chars do backend)

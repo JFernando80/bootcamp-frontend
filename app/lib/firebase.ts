@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getStorage } from "firebase/storage";
+import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -12,6 +13,7 @@ const firebaseConfig = {
 
 let app: ReturnType<typeof initializeApp> | null = null;
 let storage: ReturnType<typeof getStorage> | null = null;
+let firestore: ReturnType<typeof getFirestore> | null = null;
 
 export function getFirebaseApp() {
   if (!app) {
@@ -32,6 +34,14 @@ export function getFirebaseStorage() {
     storage = getStorage(app!);
   }
   return storage;
+}
+
+export function getFirebaseFirestore() {
+  if (!firestore) {
+    getFirebaseApp();
+    firestore = getFirestore(app!);
+  }
+  return firestore;
 }
 
 export function isFirebaseConfigured(): boolean {

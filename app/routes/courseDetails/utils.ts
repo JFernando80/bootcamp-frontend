@@ -1,5 +1,22 @@
 import type { ActivityDTO, ModuleDTO } from "~/api/types";
 
+const ACTIVITY_TYPE_ORDER: Record<string, number> = {
+  VIDEO_AULA: 0,
+  MATERIAL_LEITURA: 1,
+  QUIZ_AVALIACAO: 2,
+};
+
+/** Ordena atividades: Vídeo, Leitura, Quiz. */
+export function sortActivitiesByType(
+  activities: ActivityDTO[],
+): ActivityDTO[] {
+  return [...activities].sort((a, b) => {
+    const orderA = ACTIVITY_TYPE_ORDER[a.type || ""] ?? 99;
+    const orderB = ACTIVITY_TYPE_ORDER[b.type || ""] ?? 99;
+    return orderA - orderB;
+  });
+}
+
 export type ActivityCategory = "VIDEO" | "QUIZ" | "READING" | "OTHER";
 
 export function getActivityCategory(type: string): ActivityCategory {

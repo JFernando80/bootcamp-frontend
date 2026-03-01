@@ -7,12 +7,15 @@ import {
   uploadVideo,
   getVideoAccept,
   getMaxVideoSizeMB,
+  storeVideoRef,
+  isVideoUrlTooLong,
 } from "~/lib/firebaseStorage";
 import { isFirebaseConfigured } from "~/lib/firebase";
 
 // ---- Config shape per type ----
 interface VideoConfig {
   videoUrl: string;
+  videoRef?: boolean;
   duration?: number;
 }
 interface ReadingConfig {
@@ -49,7 +52,14 @@ function buildInitialConfig(type: string, configJson: string): any {
   const cfg = safeParse(configJson);
   const t = toInternalType(type);
   if (t === "VIDEO") {
-    return { videoUrl: cfg.videoUrl || "", duration: cfg.duration ?? "" };
+    const dur = cfg.duration;
+    const durationMinutes =
+      dur != null && dur !== "" ? Number(dur) / 60 : "";
+    return {
+      videoUrl: cfg.videoUrl || "",
+      videoRef: cfg.videoRef ?? false,
+      duration: durationMinutes,
+    };
   }
   if (t === "QUIZ") {
     // Suporta formato compacto {q, o, c} e formato completo {questions}
@@ -82,8 +92,9 @@ function buildConfigJson(type: string, typeConfig: any): string {
   const t = toInternalType(type);
   if (t === "VIDEO") {
     const cfg: VideoConfig = { videoUrl: typeConfig.videoUrl || "" };
+    if (typeConfig.videoRef) cfg.videoRef = true;
     if (typeConfig.duration !== "" && typeConfig.duration != null)
-      cfg.duration = Number(typeConfig.duration);
+      cfg.duration = Math.round(Number(typeConfig.duration) * 60);
     return JSON.stringify(cfg);
   }
   if (t === "QUIZ") {
@@ -133,6 +144,7 @@ export function ActivityModal({
   const [videoSource, setVideoSource] = useState<"url" | "upload">("url");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
+  const [uploadedVideoName, setUploadedVideoName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [type, setType] = useState(activity?.type || "");
@@ -148,6 +160,7 @@ export function ActivityModal({
     setVideoSource("url");
     setUploadProgress(0);
     setUploading(false);
+    setUploadedVideoName(null);
   }, [isOpen]);
 
   useEffect(() => {
@@ -207,9 +220,21 @@ export function ActivityModal({
     setLoading(true);
     setError(null);
     try {
+      let finalConfig = { ...typeConfig };
+      if (toInternalType(type) === "VIDEO" && typeConfig.videoUrl) {
+        const url = typeConfig.videoUrl;
+        if (isVideoUrlTooLong(url)) {
+          const shortId = await storeVideoRef(url);
+          finalConfig = {
+            ...typeConfig,
+            videoUrl: shortId,
+            videoRef: true,
+          };
+        }
+      }
       const activityData: ActivityDTO = {
         type: BACKEND_TYPE[type] || type,
-        configJson: buildConfigJson(type, typeConfig),
+        configJson: buildConfigJson(type, finalConfig),
         maxScore,
         passingScore,
         moduleId,
@@ -226,11 +251,27 @@ export function ActivityModal({
       onSuccess();
       onClose();
     } catch (err: any) {
-      setError(
+      const data = err.response?.data;
+      const rawBody = data?.body;
+      const bodyStr = Array.isArray(rawBody)
+        ? rawBody.join(" ")
+        : typeof rawBody === "string"
+          ? rawBody
+          : "";
+      const isConfigJsonLimit =
+        bodyStr.includes("config_json") && bodyStr.includes("150");
+
+      let errorMsg =
         err.response?.data?.message ||
-          err.message ||
-          "Erro ao salvar atividade. Tente novamente.",
-      );
+        err.message ||
+        "Erro ao salvar atividade. Tente novamente.";
+
+      if (isConfigJsonLimit) {
+        errorMsg =
+          "O conteúdo excede o limite de 150 caracteres. Para vídeos, use o upload ou uma URL curta. Para quiz, encurte o enunciado ou as opções.";
+      }
+
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -249,11 +290,13 @@ export function ActivityModal({
     setUploading(true);
     setError(null);
     setUploadProgress(0);
+    setUploadedVideoName(null);
     try {
       const ext = file.name.split(".").pop() || "mp4";
       const path = `videos/${userId}/${moduleId}/${Date.now()}.${ext}`;
       const url = await uploadVideo(file, path, (p) => setUploadProgress(p));
       setTypeConfig({ ...typeConfig, videoUrl: url });
+      setUploadedVideoName(file.name);
     } catch (err: unknown) {
       setError((err as Error)?.message || "Erro ao fazer upload do vídeo.");
     } finally {
@@ -302,28 +345,47 @@ export function ActivityModal({
             </label>
             <input
               type="url"
-              value={typeConfig.videoUrl || ""}
+              value={
+                typeConfig.videoRef
+                  ? "Vídeo enviado via upload"
+                  : typeConfig.videoUrl || ""
+              }
               onChange={(e) =>
                 setTypeConfig({ ...typeConfig, videoUrl: e.target.value })
               }
               className={inputCls}
               placeholder="https://youtube.com/embed/... ou link direto"
-              disabled={loading}
+              disabled={loading || !!typeConfig.videoRef}
+              readOnly={!!typeConfig.videoRef}
             />
+            {typeConfig.videoRef && (
+              <p className="text-xs text-amber-600 mt-1">
+                Este vídeo foi enviado via upload. Para alterar, use a aba
+                &quot;Fazer upload&quot; e envie um novo vídeo.
+              </p>
+            )}
           </div>
         ) : (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Upload de vídeo
             </label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={getVideoAccept()}
-              onChange={handleVideoUpload}
-              disabled={loading || uploading}
-              className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 file:cursor-pointer"
-            />
+            <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+              <span>Escolher arquivo</span>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={getVideoAccept()}
+                onChange={handleVideoUpload}
+                disabled={loading || uploading}
+                className="sr-only"
+              />
+            </label>
+            {uploadedVideoName && (
+              <p className="text-sm text-gray-600 mt-2 font-medium">
+                {uploadedVideoName}
+              </p>
+            )}
             <p className="text-xs text-gray-500 mt-1">
               Formatos: MP4, WebM, OGG. Máximo: {getMaxVideoSizeMB()}MB
             </p>
@@ -349,17 +411,18 @@ export function ActivityModal({
         )}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Duração (segundos)
+            Duração (minutos)
           </label>
           <input
             type="number"
             min="0"
+            step="0.5"
             value={typeConfig.duration ?? ""}
             onChange={(e) =>
               setTypeConfig({ ...typeConfig, duration: e.target.value })
             }
             className={inputCls}
-            placeholder="Ex: 600 (= 10 minutos)"
+            placeholder="Ex: 10"
             disabled={loading}
           />
         </div>
