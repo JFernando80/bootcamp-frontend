@@ -32,8 +32,18 @@ export default function Courses() {
       const response = await courseService.list(currentPage, filters);
 
       if (response.statusCode === 200 && response.body) {
-        setCourses(response.body.lista);
-        setTotalPages(response.body.total);
+        const body = response.body as {
+          lista?: CourseDTO[];
+          total?: number;
+          totalPages?: number;
+        };
+        setCourses(body.lista || []);
+        const total = body.total ?? 0;
+        const totalPagesFromApi = body.totalPages;
+        const pages =
+          totalPagesFromApi ??
+          (total > 0 ? Math.max(1, total) : 1);
+        setTotalPages(pages);
       }
     } catch (err: any) {
       console.error("Erro ao carregar cursos:", err);
