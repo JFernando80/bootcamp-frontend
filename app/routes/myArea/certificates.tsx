@@ -118,7 +118,7 @@ export default function CertificatesRoute() {
           return {
             nome: courseName,
             userName: userName || "Usuário",
-            emissor: "Impacta",
+            emissor: "Bootcamp",
             dataEmissao: date,
             hashAutenticacao: buildHash(userId!, uc.courseId),
           } satisfies CertificateData;

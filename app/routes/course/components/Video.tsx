@@ -43,9 +43,9 @@ const Video: React.FC<VideoProps> = ({ configJson, videoUrl, className }) => {
   }
 
   const videoId = url ? extractYouTubeId(url) : null;
-  const embed = videoId ? `https://www.youtube.com/embed/${videoId}` : null;
+  const isYouTube = !!videoId;
 
-  if (!embed) {
+  if (!url) {
     return (
       <div
         className={`aspect-video bg-gray-200 rounded-lg mb-6 shadow-sm ${className || ""}`}
@@ -62,19 +62,39 @@ const Video: React.FC<VideoProps> = ({ configJson, videoUrl, className }) => {
     );
   }
 
+  // YouTube embed
+  if (isYouTube) {
+    const embed = `https://www.youtube.com/embed/${videoId}`;
+    return (
+      <div
+        className={`aspect-video bg-black rounded-lg overflow-hidden mb-6 shadow-sm ${className || ""}`}
+      >
+        <iframe
+          width="100%"
+          height="100%"
+          src={embed}
+          title="Vídeo do curso"
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+        />
+      </div>
+    );
+  }
+
+  // Direct video URL (Firebase Storage, MP4, WebM, etc.)
   return (
     <div
       className={`aspect-video bg-black rounded-lg overflow-hidden mb-6 shadow-sm ${className || ""}`}
     >
-      <iframe
-        width="100%"
-        height="100%"
-        src={embed}
-        title="Vídeo do curso"
-        frameBorder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        allowFullScreen
-      ></iframe>
+      <video
+        src={url}
+        controls
+        className="w-full h-full object-contain"
+        playsInline
+      >
+        Seu navegador não suporta a reprodução de vídeo.
+      </video>
     </div>
   );
 };

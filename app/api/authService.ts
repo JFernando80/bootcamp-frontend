@@ -1,5 +1,5 @@
 import CryptoJS from "crypto-js";
-import httpClient from "./httpClient";
+import httpClient, { apiPublicGet, apiPublicPost } from "./httpClient";
 import { useAuthStore } from "~/stores/authStore";
 import { userService } from "./services";
 import { enumService } from "./services";
@@ -327,27 +327,37 @@ export async function validateToken(
 }
 
 /**
- * Atualizar token expirado
+ * Handshake sem enviar Authorization (para uso no refresh, quando o token pode estar expirado).
+ */
+async function handshakePublic(screen: string = "cadastro") {
+  const resp = await apiPublicGet<
+    JsonResponse<{ id: number; publicKey: string }>
+  >(`/bootcamp/security/${screen}`);
+  if (resp?.body) {
+    return { id: resp.body.id, publicKey: resp.body.publicKey };
+  }
+  throw new Error("Handshake falhou: resposta inválida do servidor");
+}
+
+/**
+ * Atualizar token expirado.
+ * Usa cliente público (sem Authorization) para evitar 401 ao enviar token expirado.
  */
 export async function refreshToken(refreshToken: string): Promise<any> {
-  const { id, publicKey } = await handshake();
+  const { id, publicKey } = await handshakePublic();
 
-  const resp = await httpClient.post<any>(
+  const data = await apiPublicPost<any, { refreshToken: string }>(
     "/bootcamp/user/refresh_token",
-    { refreshToken }, // Apenas refreshToken no body
-    { headers: { token: id } }, // Security ID no header
+    { refreshToken },
+    { headers: { token: String(id) } as Record<string, string> },
   );
 
-  if (resp.data.statusCode === 200 && resp.data.body) {
-    // Preservar dados do usuário atual
+  if (data?.statusCode === 200 && data?.body) {
     const { userName, userEmail, isAdmin, userId } = useAuthStore.getState();
 
-    // Extrair novo token e refreshToken da resposta
-    const newToken = resp.data.body.tokenDTO?.token || resp.data.body.token;
-    const newRefreshToken =
-      resp.data.body.tokenDTO?.refreshToken || refreshToken;
+    const newToken = data.body.tokenDTO?.token ?? data.body.token;
+    const newRefreshToken = data.body.tokenDTO?.refreshToken ?? refreshToken;
 
-    // Calcular ttlMinutes a partir do novo token (se disponível)
     let ttlMinutes: number | undefined = undefined;
     try {
       if (newToken) {
@@ -358,53 +368,50 @@ export async function refreshToken(refreshToken: string): Promise<any> {
           ttlMinutes = Math.max(1, Math.floor((expMs - Date.now()) / 60000));
         }
       }
-    } catch (err) {
+    } catch {
       // ignore
     }
 
-    // Atualizar store mantendo os dados do usuário
     useAuthStore
       .getState()
       .login(
         newToken,
         id,
         publicKey,
-        userName || undefined,
-        userEmail || undefined,
+        userName ?? undefined,
+        userEmail ?? undefined,
         isAdmin,
         newRefreshToken,
         ttlMinutes,
-        userId || undefined,
+        userId ?? undefined,
       );
 
-    // Se o flag isAdmin não estiver definido/true, tentar obter via API pelo email salvo
     try {
       const current = useAuthStore.getState();
       if (!current.isAdmin && current.userEmail) {
         const user = await userService.getByEmail(current.userEmail);
-        if (user && user.administrador) {
+        if (user?.administrador) {
           useAuthStore
             .getState()
             .login(
               newToken,
               id,
               publicKey,
-              current.userName || undefined,
-              current.userEmail || undefined,
+              current.userName ?? undefined,
+              current.userEmail ?? undefined,
               true,
               newRefreshToken,
               undefined,
-              current.userId || undefined,
+              current.userId ?? undefined,
             );
         }
       }
     } catch (err) {
-      // não crítico — apenas logar
       console.error("❌ Erro ao sincronizar isAdmin após refreshToken:", err);
     }
   }
 
-  return resp.data;
+  return data;
 }
 
 /**

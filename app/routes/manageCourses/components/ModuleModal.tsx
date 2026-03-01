@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import { moduleService, activityService } from "~/api/services";
-import { ActivityModal } from "./ActivityModal";
+import { moduleService } from "~/api/services";
 import type { ModuleDTO } from "~/api/types";
 
 interface ModuleModalProps {
@@ -11,6 +10,7 @@ interface ModuleModalProps {
   courseId: string;
   courseDescription?: string;
   module?: ModuleDTO | null; // Se passar módulo, é edição
+  modules?: ModuleDTO[]; // Para calcular ordem ao criar novo módulo
 }
 
 export function ModuleModal({
@@ -20,19 +20,20 @@ export function ModuleModal({
   courseId,
   courseDescription,
   module,
+  modules = [],
 }: ModuleModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const nextIndex =
+    modules.length === 0 ? 1 : Math.max(...modules.map((m) => m.index)) + 1;
+
   const [formData, setFormData] = useState({
-    index: module?.index || 1,
+    index: module?.index ?? nextIndex,
     title: module?.title || "",
     description: module?.description || "",
     requiredToCompleteCourse: module?.requiredToCompleteCourse ?? true,
   });
-  const [activities, setActivities] = useState<any[]>([]);
-  const [activityModalOpen, setActivityModalOpen] = useState(false);
-  const [editingActivity, setEditingActivity] = useState<any | null>(null);
 
   useEffect(() => {
     if (module) {
@@ -42,20 +43,15 @@ export function ModuleModal({
         description: module.description,
         requiredToCompleteCourse: module.requiredToCompleteCourse,
       });
-      // carregar atividades quando estivermos no modo edição
-      if (module.id) {
-        (async () => {
-          try {
-            const resp = await activityService.getByModule(module.id!);
-            const lista = resp.body?.lista || [];
-            setActivities(lista.slice().reverse());
-          } catch (e) {
-            console.error("Erro ao carregar atividades do módulo:", e);
-          }
-        })();
-      }
+    } else {
+      setFormData({
+        index: nextIndex,
+        title: "",
+        description: "",
+        requiredToCompleteCourse: true,
+      });
     }
-  }, [module]);
+  }, [module, nextIndex]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,17 +74,9 @@ export function ModuleModal({
       };
 
       if (module?.id) {
-        // Editar
         await moduleService.update(module.id, moduleData);
-        // recarregar atividades
-        try {
-          const resp = await activityService.getByModule(module.id!);
-          const lista = resp.body?.lista || [];
-          setActivities(lista.slice().reverse());
-        } catch (e) {
-          console.error("Erro ao recarregar atividades:", e);
-        }
         onSuccess();
+        onClose();
       } else {
         // Criar
         await moduleService.create(moduleData);
@@ -119,7 +107,7 @@ export function ModuleModal({
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition"
+            className="text-gray-400 hover:text-gray-600 transition cursor-pointer"
           >
             <X className="h-6 w-6" />
           </button>
@@ -134,26 +122,6 @@ export function ModuleModal({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Ordem do Módulo *
-            </label>
-            <input
-              type="number"
-              min="1"
-              required
-              value={formData.index}
-              onChange={(e) =>
-                setFormData({ ...formData, index: parseInt(e.target.value) })
-              }
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={loading}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Define a sequência do módulo no curso
-            </p>
-          </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Título do Módulo *
@@ -237,117 +205,20 @@ export function ModuleModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition cursor-pointer"
               disabled={loading}
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 cursor-pointer"
               disabled={loading || formData.title.trim().length < 10}
             >
               {loading ? "Salvando..." : module ? "Atualizar" : "Criar Módulo"}
             </button>
           </div>
         </form>
-
-        {/* Activity Modal */}
-        <ActivityModal
-          isOpen={activityModalOpen}
-          onClose={() => setActivityModalOpen(false)}
-          onSuccess={async () => {
-            if (module?.id) {
-              const resp = await activityService.getByModule(module.id!);
-              const lista = resp.body?.lista || [];
-              setActivities(lista.slice().reverse());
-            }
-            setActivityModalOpen(false);
-          }}
-          moduleId={module?.id || ""}
-          moduleDescription={module?.description}
-          activity={editingActivity}
-        />
-
-        {/* Activities list (edit/delete) — shown only when editing an existing module */}
-        {module?.id && (
-          <div className="p-6 border-t">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Atividades do Módulo</h3>
-              <div>
-                <button
-                  onClick={() => {
-                    setEditingActivity(null);
-                    setActivityModalOpen(true);
-                  }}
-                  className="px-3 py-2 bg-green-600 text-white rounded-md"
-                >
-                  Nova Atividade
-                </button>
-              </div>
-            </div>
-
-            {activities.length === 0 ? (
-              <p className="text-sm text-gray-500">
-                Nenhuma atividade cadastrada.
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {activities.map((a) => (
-                  <li
-                    key={a.id}
-                    className="flex items-center justify-between p-3 border rounded"
-                  >
-                    <div>
-                      <div className="text-sm font-medium">{a.type}</div>
-                      <div className="text-xs text-gray-500">
-                        {a.configJson
-                          ? (() => {
-                              try {
-                                return JSON.parse(a.configJson).videoUrl || "";
-                              } catch {
-                                return "";
-                              }
-                            })()
-                          : ""}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          setEditingActivity(a);
-                          setActivityModalOpen(true);
-                        }}
-                        className="px-2 py-1 border rounded"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={async () => {
-                          if (!confirm("Confirmar exclusão da atividade?"))
-                            return;
-                          try {
-                            await activityService.delete(a.id);
-                            const resp = await activityService.getByModule(
-                              module.id!,
-                            );
-                            const lista = resp.body?.lista || [];
-                            setActivities(lista.slice().reverse());
-                          } catch (err) {
-                            console.error(err);
-                          }
-                        }}
-                        className="px-2 py-1 border rounded text-red-600"
-                      >
-                        Excluir
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

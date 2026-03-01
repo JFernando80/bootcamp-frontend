@@ -9,6 +9,8 @@ import {
   BookOpen,
   FileText,
   CheckCircle2,
+  PlayCircle,
+  HelpCircle,
 } from "lucide-react";
 import { courseService, moduleService, activityService } from "~/api/services";
 import type { CourseDTO, ModuleDTO, ActivityDTO } from "~/api/types";
@@ -16,6 +18,10 @@ import { ModuleModal } from "./components/ModuleModal";
 import { ActivityModal } from "./components/ActivityModal";
 import { useNotification } from "~/components/NotificationProvider";
 import { useAuthStore } from "~/stores/authStore";
+import {
+  getActivityCategory,
+  getActivityLabel,
+} from "~/routes/courseDetails/utils";
 
 export default function ManageCourseDetail() {
   const { notify } = useNotification();
@@ -40,6 +46,8 @@ export default function ManageCourseDetail() {
     null,
   );
   const [selectedModuleId, setSelectedModuleId] = useState<string>("");
+  const [moduleToDelete, setModuleToDelete] = useState<ModuleDTO | null>(null);
+  const [deletingModule, setDeletingModule] = useState(false);
 
   useEffect(() => {
     if (slug) {
@@ -104,10 +112,10 @@ export default function ManageCourseDetail() {
   };
 
   const handleDeleteModule = async (moduleId: string) => {
-    if (!confirm("Tem certeza que deseja excluir este módulo?")) return;
-
+    setDeletingModule(true);
     try {
       await moduleService.delete(moduleId);
+      setModuleToDelete(null);
       await loadCourseData();
     } catch (err: any) {
       notify({
@@ -116,6 +124,8 @@ export default function ManageCourseDetail() {
           "Erro ao excluir módulo: " +
           (err.response?.body?.message || err.message),
       });
+    } finally {
+      setDeletingModule(false);
     }
   };
 
@@ -182,7 +192,7 @@ export default function ManageCourseDetail() {
               <button
                 type="button"
                 onClick={() => navigate(-1)}
-                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition"
+                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition cursor-pointer"
               >
                 <ArrowLeft className="h-5 w-5" />
                 Voltar para Gerenciar Cursos
@@ -203,34 +213,28 @@ export default function ManageCourseDetail() {
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition"
+              className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition cursor-pointer"
             >
               <ArrowLeft className="h-5 w-5" />
               Voltar para Gerenciar Cursos
             </button>
 
             <div className="bg-white rounded-xl shadow-md p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-4">
-                  <div className="bg-gradient-to-br from-green-400 to-blue-500 p-3 rounded-lg">
+              <div className="flex items-start justify-between gap-6">
+                <div className="flex items-start gap-4 min-w-0 flex-1">
+                  <div className="bg-gradient-to-br from-green-400 to-blue-500 p-3 rounded-lg flex-shrink-0">
                     <BookOpen className="h-8 w-8 text-white" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h1 className="text-3xl font-bold text-gray-900 mb-2">
                       {course.title}
                     </h1>
-                    <p className="text-gray-600">{course.description}</p>
-                    <p className="text-sm text-gray-500 mt-2">
-                      Slug:{" "}
-                      <code className="bg-gray-100 px-2 py-1 rounded">
-                        {course.slug}
-                      </code>
-                    </p>
+                    <p className="text-gray-600 break-words">{course.description}</p>
                   </div>
                 </div>
                 <Link
                   to={`/editCourse/${course.slug}`}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition cursor-pointer flex-shrink-0 whitespace-nowrap"
                 >
                   <Edit className="h-4 w-4" />
                   Editar Curso
@@ -246,7 +250,7 @@ export default function ManageCourseDetail() {
               {isAdmin && (
                 <button
                   onClick={openCreateModule}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer"
                 >
                   <Plus className="h-5 w-5" />
                   Adicionar Módulo
@@ -293,13 +297,13 @@ export default function ManageCourseDetail() {
                         <div className="flex gap-2 ml-4">
                           <button
                             onClick={() => openEditModule(module)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
                           >
                             <Edit className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => handleDeleteModule(module.id!)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                            onClick={() => setModuleToDelete(module)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -316,7 +320,7 @@ export default function ManageCourseDetail() {
                         {isAdmin && (
                           <button
                             onClick={() => openCreateActivity(module.id!)}
-                            className="inline-flex items-center gap-1 px-3 py-1 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                            className="inline-flex items-center gap-1 px-3 py-1 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition cursor-pointer"
                           >
                             <Plus className="h-4 w-4" />
                             Adicionar
@@ -336,16 +340,30 @@ export default function ManageCourseDetail() {
                               key={activity.id}
                               className="flex items-center justify-between bg-gray-50 p-3 rounded-lg"
                             >
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-xs font-medium px-2 py-1 bg-purple-100 text-purple-700 rounded">
-                                    {activity.type}
-                                  </span>
-                                  <span className="text-sm text-gray-600">
-                                    Máx: {activity.maxScore} pts | Mín:{" "}
-                                    {activity.passingScore} pts
-                                  </span>
-                                </div>
+                              <div className="flex-1 flex items-center gap-2">
+                                {(() => {
+                                  const cat = getActivityCategory(
+                                    activity.type || "",
+                                  );
+                                  const icon =
+                                    cat === "VIDEO" ? (
+                                      <PlayCircle className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                    ) : cat === "QUIZ" ? (
+                                      <HelpCircle className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                    ) : cat === "READING" ? (
+                                      <BookOpen className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                    ) : (
+                                      <FileText className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                    );
+                                  return (
+                                    <>
+                                      {icon}
+                                      <span className="text-xs font-medium px-2 py-1 bg-purple-100 text-purple-700 rounded">
+                                        {getActivityLabel(activity.type || "")}
+                                      </span>
+                                    </>
+                                  );
+                                })()}
                               </div>
                               {isAdmin && (
                                 <div className="flex gap-2">
@@ -353,7 +371,7 @@ export default function ManageCourseDetail() {
                                     onClick={() =>
                                       openEditActivity(activity, module.id!)
                                     }
-                                    className="p-1 text-blue-600 hover:bg-blue-50 rounded transition"
+                                    className="p-1 text-blue-600 hover:bg-blue-50 rounded transition cursor-pointer"
                                   >
                                     <Edit className="h-3 w-3" />
                                   </button>
@@ -361,7 +379,7 @@ export default function ManageCourseDetail() {
                                     onClick={() =>
                                       handleDeleteActivity(activity.id!)
                                     }
-                                    className="p-1 text-red-600 hover:bg-red-50 rounded transition"
+                                    className="p-1 text-red-600 hover:bg-red-50 rounded transition cursor-pointer"
                                   >
                                     <Trash2 className="h-3 w-3" />
                                   </button>
@@ -388,6 +406,7 @@ export default function ManageCourseDetail() {
         courseId={course.id || course.slug || ""}
         courseDescription={course.description}
         module={editingModule}
+        modules={modules}
       />
 
       <ActivityModal
@@ -400,6 +419,39 @@ export default function ManageCourseDetail() {
         }
         activity={editingActivity}
       />
+
+      {/* Modal de confirmação de exclusão de módulo */}
+      {moduleToDelete && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Excluir módulo
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Tem certeza que deseja excluir o módulo &quot;
+              {moduleToDelete.title}&quot;? Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => !deletingModule && setModuleToDelete(null)}
+                disabled={deletingModule}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition cursor-pointer disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteModule(moduleToDelete.id!)}
+                disabled={deletingModule}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition cursor-pointer disabled:opacity-50"
+              >
+                {deletingModule ? "Excluindo..." : "Excluir"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </ProtectedRoute>
   );
 }

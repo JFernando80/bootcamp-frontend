@@ -4,13 +4,78 @@ import {
   userActivityService,
   userModuleService,
   moduleService,
+  courseService,
+  userCourseService,
 } from "~/api/services";
 import type {
   ActivityDTO,
   ModuleDTO,
   UserActivityDTO,
   UserModuleDTO,
+  CourseDTO,
+  UserCourseDTO,
 } from "~/api/types";
+
+/** Busca um curso por ID ou slug. */
+export function useCourseQuery(courseId?: string) {
+  return useQuery({
+    queryKey: ["course", courseId],
+    queryFn: async () => {
+      if (!courseId) return null;
+      return courseService.getById(courseId);
+    },
+    enabled: !!courseId,
+  });
+}
+
+/** Busca a inscrição do usuário em um curso. */
+export function useEnrollmentQuery(userId?: string, courseId?: string) {
+  return useQuery({
+    queryKey: ["enrollment", userId, courseId],
+    queryFn: async (): Promise<UserCourseDTO | null> => {
+      if (!userId || !courseId) return null;
+      const resp = await userCourseService.list(1, [
+        { key: "id", operation: "EQUAL", value: userId, classes: "user" },
+      ]);
+      const enrollment = resp.body?.lista?.find((uc) => uc.courseId === courseId);
+      return enrollment ?? null;
+    },
+    enabled: !!userId && !!courseId,
+  });
+}
+
+/** Curso + módulos + atividades por módulo em uma única camada de dados (com cache). */
+export function useCourseWithStructure(courseId?: string) {
+  const courseQuery = useCourseQuery(courseId);
+  const course = courseQuery.data ?? null;
+  const courseIdentifier = course?.id ?? course?.slug ?? courseId;
+
+  const modulesQuery = useModulesQuery(courseIdentifier ?? undefined);
+  const modules = modulesQuery.data ?? [];
+
+  const activitiesQuery = useActivitiesForModules(modules);
+  const activitiesByModule = activitiesQuery.data ?? {};
+
+  const isLoading =
+    courseQuery.isLoading || modulesQuery.isLoading || activitiesQuery.isLoading;
+  const error =
+    courseQuery.error ?? modulesQuery.error ?? activitiesQuery.error;
+  const isError = courseQuery.isError || modulesQuery.isError || activitiesQuery.isError;
+
+  return {
+    course,
+    modules,
+    activitiesByModule,
+    isLoading,
+    error,
+    isError,
+    refetch: () => {
+      courseQuery.refetch();
+      modulesQuery.refetch();
+      activitiesQuery.refetch();
+    },
+  };
+}
 
 export function useModulesQuery(courseId?: string) {
   return useQuery({

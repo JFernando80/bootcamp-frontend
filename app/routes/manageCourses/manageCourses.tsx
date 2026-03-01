@@ -1,78 +1,71 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link } from "react-router";
 import { ProtectedRoute } from "~/components/ProtectedRoute";
-import { BookOpen, Edit2, Trash2, Plus, Search, Settings } from "lucide-react";
+import {
+  BookOpen,
+  Plus,
+  Search,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { courseService } from "~/api/services/courseService";
-import { useNotification } from "~/components/NotificationProvider";
-import type { CourseDTO } from "~/api/types";
+import type { CourseDTO, SearchCriteriaDTO } from "~/api/types";
 import { useAuthStore } from "~/stores/authStore";
 
 export default function ManageCourses() {
-  const { notify } = useNotification();
-  const navigate = useNavigate();
   const { userId, isAdmin } = useAuthStore();
   const [courses, setCourses] = useState<CourseDTO[]>([]);
-  const [filteredCourses, setFilteredCourses] = useState<CourseDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(totalItems / Math.max(pageSize, 1)),
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   useEffect(() => {
     loadCourses();
-  }, []);
-
-  useEffect(() => {
-    if (searchTerm.trim() === "") {
-      setFilteredCourses(courses);
-    } else {
-      const filtered = courses.filter(
-        (course) =>
-          course.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          course.description
-            ?.toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          course.slug?.toLowerCase().includes(searchTerm.toLowerCase()),
-      );
-      setFilteredCourses(filtered);
-    }
-  }, [searchTerm, courses]);
+  }, [userId, currentPage, searchTerm]);
 
   const loadCourses = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await courseService.list();
-      console.log("Cursos carregados:", response);
-      const coursesList = response?.body?.lista || [];
+      const filters: SearchCriteriaDTO[] = [];
+      if (searchTerm.trim()) {
+        filters.push({
+          key: "title",
+          operation: "MATCH",
+          value: searchTerm.trim(),
+        });
+      }
+      const response = await courseService.list(currentPage, filters);
+      const body = response?.body;
+      const coursesList = body?.lista || [];
       setCourses(coursesList);
-      setFilteredCourses(coursesList);
-    } catch (err: any) {
+      setTotalItems(body?.total ?? 0);
+      setPageSize((prev) =>
+        coursesList.length > 0 && coursesList.length >= prev
+          ? coursesList.length
+          : prev,
+      );
+    } catch (err: unknown) {
       console.error("Erro ao carregar cursos:", err);
       setError(
-        err.response?.body?.message ||
-          "Erro ao carregar cursos. Tente novamente.",
+        (err as { response?: { body?: { message?: string } } })?.response
+          ?.body?.message || "Erro ao carregar cursos. Tente novamente.",
       );
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDelete = async (slug: string) => {
-    try {
-      await courseService.delete(slug);
-      console.log(`Curso ${slug} deletado com sucesso`);
-      setDeleteConfirm(null);
-      // Recarrega a lista de cursos
-      await loadCourses();
-    } catch (err: any) {
-      console.error("Erro ao deletar curso:", err);
-      notify({
-        type: "error",
-        message:
-          err.response?.body?.message ||
-          "Erro ao deletar curso. Tente novamente.",
-      });
     }
   };
 
@@ -92,7 +85,7 @@ export default function ManageCourses() {
                     Gerenciar Cursos
                   </h1>
                   <p className="text-gray-600">
-                    Visualize, edite e exclua cursos da plataforma
+                    Visualize e gerencie seus cursos
                   </p>
                 </div>
               </div>
@@ -115,7 +108,7 @@ export default function ManageCourses() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Buscar por título, descrição ou slug..."
+                placeholder="Buscar por título ou descrição..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -139,7 +132,7 @@ export default function ManageCourses() {
           )}
 
           {/* Empty State */}
-          {!loading && filteredCourses.length === 0 && !error && (
+          {!loading && courses.length === 0 && !error && (
             <div className="bg-white rounded-xl shadow-md p-8 text-center">
               <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-600 mb-4">
@@ -160,107 +153,91 @@ export default function ManageCourses() {
           )}
 
           {/* Courses List */}
-          {!loading && filteredCourses.length > 0 && (
-            <div className="bg-white rounded-xl shadow-md overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Slug
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Título
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Descrição
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Criado em
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Ações
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredCourses.map((course) => (
-                      <tr key={course.slug} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {course.slug}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {course.title}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-500 max-w-md truncate">
-                          {course.description}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {course.createdAtS || "N/A"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex items-center gap-2">
-                            {(isAdmin || course.ownerUser?.id === userId) && (
-                              <>
-                                <Link
-                                  to={`/manageCourses/${course.slug}`}
-                                  className="text-purple-600 hover:text-purple-900 inline-flex items-center gap-1"
-                                >
-                                  <Settings className="h-4 w-4" />
-                                  Gerenciar
-                                </Link>
-
-                                <Link
-                                  to={`/editCourse/${course.slug}`}
-                                  className="text-blue-600 hover:text-blue-900 inline-flex items-center gap-1"
-                                >
-                                  <Edit2 className="h-4 w-4" />
-                                  Editar
-                                </Link>
-
-                                {deleteConfirm === course.slug ? (
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      onClick={() => handleDelete(course.slug!)}
-                                      className="text-red-600 hover:text-red-900 font-semibold"
-                                    >
-                                      Confirmar
-                                    </button>
-                                    <button
-                                      onClick={() => setDeleteConfirm(null)}
-                                      className="text-gray-600 hover:text-gray-900"
-                                    >
-                                      Cancelar
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <button
-                                    onClick={() =>
-                                      setDeleteConfirm(course.slug!)
-                                    }
-                                    className="text-red-600 hover:text-red-900 inline-flex items-center gap-1"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                    Deletar
-                                  </button>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </td>
+          {!loading && courses.length > 0 && (
+            <>
+              <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Título
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Descrição
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Criado em
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Ações
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {courses.map((course) => (
+                        <tr key={course.slug} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {course.title}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500 max-w-md truncate">
+                            {course.description}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {course.createdAtS || "N/A"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            {(isAdmin || course.ownerUser?.id === userId) && (
+                              <Link
+                                to={`/manageCourses/${course.slug}`}
+                                className="text-purple-600 hover:text-purple-900 inline-flex items-center gap-1"
+                              >
+                                <Settings className="h-4 w-4" />
+                                Gerenciar
+                              </Link>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          )}
 
-          {/* Course Count */}
-          {!loading && filteredCourses.length > 0 && (
-            <div className="mt-4 text-sm text-gray-600 text-center">
-              Exibindo {filteredCourses.length} de {courses.length} cursos
-            </div>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-6 flex justify-center items-center gap-4">
+                  <button
+                    onClick={() =>
+                      setCurrentPage((p) => Math.max(1, p - 1))
+                    }
+                    disabled={currentPage === 1}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                    Anterior
+                  </button>
+                  <span className="text-sm text-gray-600">
+                    Página {currentPage} de {totalPages}
+                  </span>
+                  <button
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
+                    disabled={currentPage === totalPages}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Próxima
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+
+              {/* Course Count */}
+              <div className="mt-4 text-sm text-gray-600 text-center">
+                Exibindo {courses.length} de {totalItems} curso(s)
+              </div>
+            </>
           )}
         </div>
       </div>

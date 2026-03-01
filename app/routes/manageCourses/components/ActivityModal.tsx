@@ -1,7 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { activityService } from "~/api/services";
 import type { ActivityDTO } from "~/api/types";
+import { useAuthStore } from "~/stores/authStore";
+import {
+  uploadVideo,
+  getVideoAccept,
+  getMaxVideoSizeMB,
+} from "~/lib/firebaseStorage";
+import { isFirebaseConfigured } from "~/lib/firebase";
 
 // ---- Config shape per type ----
 interface VideoConfig {
@@ -120,8 +127,13 @@ export function ActivityModal({
   moduleDescription,
   activity,
 }: ActivityModalProps) {
+  const { userId } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [videoSource, setVideoSource] = useState<"url" | "upload">("url");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [type, setType] = useState(activity?.type || "");
   const [maxScore, setMaxScore] = useState(activity?.maxScore ?? 100);
@@ -131,6 +143,12 @@ export function ActivityModal({
   const [typeConfig, setTypeConfig] = useState<any>(() =>
     buildInitialConfig(activity?.type || "", activity?.configJson || ""),
   );
+
+  useEffect(() => {
+    setVideoSource("url");
+    setUploadProgress(0);
+    setUploading(false);
+  }, [isOpen]);
 
   useEffect(() => {
     if (activity) {
@@ -160,7 +178,7 @@ export function ActivityModal({
     const t = (type || "").toUpperCase();
     if (!type) return "Selecione o tipo da atividade.";
     if (t === "VIDEO" && !typeConfig.videoUrl?.trim())
-      return "Informe a URL do vídeo.";
+      return "Informe a URL do vídeo ou faça o upload.";
     if (t === "QUIZ") {
       if (!typeConfig.question?.trim())
         return "Informe o enunciado da questão.";
@@ -176,8 +194,6 @@ export function ActivityModal({
       !typeConfig.content?.trim()
     )
       return "Informe a URL ou o conteúdo de leitura.";
-    if (passingScore > maxScore)
-      return "A pontuação mínima não pode ser maior que a máxima.";
     return null;
   }
 
@@ -227,24 +243,110 @@ export function ActivityModal({
 
   // ---- Dynamic field renderers ----
 
+  async function handleVideoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+    setUploading(true);
+    setError(null);
+    setUploadProgress(0);
+    try {
+      const ext = file.name.split(".").pop() || "mp4";
+      const path = `videos/${userId}/${moduleId}/${Date.now()}.${ext}`;
+      const url = await uploadVideo(file, path, (p) => setUploadProgress(p));
+      setTypeConfig({ ...typeConfig, videoUrl: url });
+    } catch (err: unknown) {
+      setError((err as Error)?.message || "Erro ao fazer upload do vídeo.");
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   function renderVideoFields() {
+    const firebaseEnabled = isFirebaseConfigured();
     return (
       <>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            URL do Vídeo *
-          </label>
-          <input
-            type="url"
-            value={typeConfig.videoUrl || ""}
-            onChange={(e) =>
-              setTypeConfig({ ...typeConfig, videoUrl: e.target.value })
-            }
-            className={inputCls}
-            placeholder="https://youtube.com/embed/... ou link direto"
-            disabled={loading}
-          />
-        </div>
+        {firebaseEnabled && (
+          <div className="flex gap-2 mb-4">
+            <button
+              type="button"
+              onClick={() => setVideoSource("url")}
+              disabled={loading || uploading}
+              className={`flex-1 py-2 px-3 rounded-lg border-2 text-sm font-medium transition cursor-pointer ${
+                videoSource === "url"
+                  ? "border-blue-500 bg-blue-50 text-blue-700"
+                  : "border-gray-200 hover:border-gray-300 text-gray-600"
+              }`}
+            >
+              URL do vídeo
+            </button>
+            <button
+              type="button"
+              onClick={() => setVideoSource("upload")}
+              disabled={loading || uploading}
+              className={`flex-1 py-2 px-3 rounded-lg border-2 text-sm font-medium transition cursor-pointer ${
+                videoSource === "upload"
+                  ? "border-blue-500 bg-blue-50 text-blue-700"
+                  : "border-gray-200 hover:border-gray-300 text-gray-600"
+              }`}
+            >
+              Fazer upload
+            </button>
+          </div>
+        )}
+        {videoSource === "url" || !firebaseEnabled ? (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              URL do Vídeo *
+            </label>
+            <input
+              type="url"
+              value={typeConfig.videoUrl || ""}
+              onChange={(e) =>
+                setTypeConfig({ ...typeConfig, videoUrl: e.target.value })
+              }
+              className={inputCls}
+              placeholder="https://youtube.com/embed/... ou link direto"
+              disabled={loading}
+            />
+          </div>
+        ) : (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Upload de vídeo
+            </label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={getVideoAccept()}
+              onChange={handleVideoUpload}
+              disabled={loading || uploading}
+              className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 file:cursor-pointer"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Formatos: MP4, WebM, OGG. Máximo: {getMaxVideoSizeMB()}MB
+            </p>
+            {uploading && (
+              <div className="mt-2">
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-600 transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {Math.round(uploadProgress)}% enviado
+                </p>
+              </div>
+            )}
+            {typeConfig.videoUrl && !uploading && (
+              <p className="text-xs text-green-600 mt-2 font-medium">
+                Vídeo enviado com sucesso!
+              </p>
+            )}
+          </div>
+        )}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Duração (segundos)
@@ -414,7 +516,7 @@ export function ActivityModal({
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition"
+            className="text-gray-400 hover:text-gray-600 transition cursor-pointer"
           >
             <X className="h-6 w-6" />
           </button>
@@ -440,7 +542,7 @@ export function ActivityModal({
                   type="button"
                   onClick={() => handleTypeChange(value)}
                   disabled={loading}
-                  className={`py-2 px-3 rounded-lg border-2 text-sm font-medium transition text-center ${
+                  className={`py-2 px-3 rounded-lg border-2 text-sm font-medium transition text-center cursor-pointer ${
                     type === value
                       ? "border-blue-500 bg-blue-50 text-blue-700"
                       : "border-gray-200 hover:border-gray-300 text-gray-600"
@@ -459,56 +561,19 @@ export function ActivityModal({
             </div>
           )}
 
-          {/* Pontuações */}
-          <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Pontuação Máxima *
-              </label>
-              <input
-                type="number"
-                min="1"
-                required
-                value={maxScore}
-                onChange={(e) => setMaxScore(parseInt(e.target.value))}
-                className={inputCls}
-                disabled={loading}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Pontuação Mínima *
-              </label>
-              <input
-                type="number"
-                min="1"
-                required
-                value={passingScore}
-                onChange={(e) => setPassingScore(parseInt(e.target.value))}
-                className={`${inputCls} ${passingScore > maxScore ? "border-red-400" : ""}`}
-                disabled={loading}
-              />
-              {passingScore > maxScore && (
-                <p className="text-xs text-red-500 mt-1">
-                  Não pode ser maior que a pontuação máxima.
-                </p>
-              )}
-            </div>
-          </div>
-
           {/* Actions */}
           <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition cursor-pointer"
               disabled={loading}
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 cursor-pointer"
               disabled={loading || !type}
             >
               {loading

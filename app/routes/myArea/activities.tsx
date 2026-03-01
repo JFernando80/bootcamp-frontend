@@ -123,9 +123,6 @@ export default function ActivitiesRoute() {
                     Status
                   </th>
                   <th className="px-6 py-3 font-semibold text-gray-600">
-                    Pontuação
-                  </th>
-                  <th className="px-6 py-3 font-semibold text-gray-600">
                     Data
                   </th>
                 </tr>
@@ -147,9 +144,6 @@ export default function ActivitiesRoute() {
                     </td>
                     <td className="px-6 py-4">
                       <StatusBadge status={act.status} />
-                    </td>
-                    <td className="px-6 py-4 text-gray-700">
-                      {act.score != null ? act.score : "—"}
                     </td>
                     <td className="px-6 py-4 text-gray-500">
                       {act.submittedAtS

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { registerUser } from "~/api/authService";
+import { registerUser, loginUser } from "~/api/authService";
 import { useNavigate } from "react-router";
 import { useNotification } from "~/components/NotificationProvider";
 
@@ -44,6 +44,8 @@ export default function RegisterCard() {
         },
         isAdmin,
       );
+      // Autenticar automaticamente após o cadastro
+      await loginUser({ email, password });
       navigate("/myArea");
     } catch (err: any) {
       const msg = err.message || "Erro ao registrar";
