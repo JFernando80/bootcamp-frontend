@@ -14,14 +14,13 @@ import { ProgressCard } from "./components/ProgressCard";
 import { CourseDetailsSidebar } from "./components/CourseDetailsSidebar";
 import { AboutCourseCard } from "./components/AboutCourseCard";
 import { CourseCompletionModal } from "./components/CourseCompletionModal";
-import {
-  CertificateModal,
-  type CertificateData,
-} from "~/routes/myArea/components/CertificateModal";
 import { useNotification } from "~/components/NotificationProvider";
 import { useAuthStore } from "~/stores/authStore";
-import { userCourseService } from "~/api/services";
-import { buildCertificateData } from "./utils/certificate";
+import {
+  userCourseService,
+  getCertificateToken,
+  openCertificate,
+} from "~/api/services";
 
 export default function CourseDetails() {
   const { courseId } = useParams();
@@ -30,8 +29,6 @@ export default function CourseDetails() {
   const queryClient = useQueryClient();
 
   const [showCompletionModal, setShowCompletionModal] = useState(false);
-  const [certificateToShow, setCertificateToShow] =
-    useState<CertificateData | null>(null);
   const [certificateTokenFromComplete, setCertificateTokenFromComplete] =
     useState<string | null>(null);
   const hasShownCompletionModal = useRef(false);
@@ -112,20 +109,33 @@ export default function CourseDetails() {
     }
   }, [isCourseCompleted, userCourse?.id, userCourse?.status, queryClient]);
 
-  const handleGetCertificate = () => {
+  const handleGetCertificate = async () => {
     setShowCompletionModal(false);
-    if (course && courseId && userId && userName) {
-      const token =
-        certificateTokenFromComplete ?? userCourse?.certificateToken;
-      const certificate = buildCertificateData({
-        courseName: course.title,
-        userName,
-        courseId,
-        userId,
-        completedAt: userCourse?.completedAt,
-        certificateToken: token,
+    if (!userCourse?.id) return;
+
+    let token =
+      certificateTokenFromComplete ??
+      userCourse?.certificateToken ??
+      (userCourse as { certificate_token?: string }).certificate_token;
+    if (!token) {
+      token = (await getCertificateToken(userCourse.id)) ?? undefined;
+    }
+
+    if (token) {
+      try {
+        await openCertificate(token);
+      } catch (err) {
+        notify({
+          type: "error",
+          message:
+            (err as Error)?.message ?? "Não foi possível abrir o certificado.",
+        });
+      }
+    } else {
+      notify({
+        type: "error",
+        message: "Certificado ainda não está disponível. Tente novamente em instantes.",
       });
-      setCertificateToShow(certificate);
     }
   };
 
@@ -194,13 +204,6 @@ export default function CourseDetails() {
           courseTitle={course.title}
           onClose={() => setShowCompletionModal(false)}
           onGetCertificate={handleGetCertificate}
-        />
-      )}
-
-      {certificateToShow && (
-        <CertificateModal
-          certificate={certificateToShow}
-          onClose={() => setCertificateToShow(null)}
         />
       )}
     </div>
